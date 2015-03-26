@@ -1,1 +1,0 @@
-{"autocommit": false, "serializer_class": "json", "store_class": "transactional", "index_class": "transactional", "indexes": {"building": {"pk": {"id": "e755eb36f03c48f7900781b164e45e2b", "key": "pk"}}, "room": {"pk": {"id": "71adbf75268a48ca9a24e97165055380", "key": "pk"}}}, "index_store_class": "basic", "version": "0.2.12"}

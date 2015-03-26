@@ -12,11 +12,9 @@ from blitzdb import FileBackend
 # M W F
 # 12:20PM
 # 1:10PM
-# LITRV 1670
-pattern = ("((?:(?:M|T|W|R|F)\s?)+)\s*\n"
-           "(?P<start_time>\d\d?:\d\d(?:AM|PM))\n"
-           "(?P<end_time>\d:\d\d(?:AM|PM))\n"
-           "(?:(?P<building>(?:\w)+)) (?P<room>(?:\w| )*)")
+# # LITRV 1670
+pattern = "(?P<days>(?:(?:M|T|W|R|F)\s?)+)\s*(?P<start_time>\d\d?:\d\d(?:AM|PM))\s*(?P<end_time>\d\d?:\d\d(?:AM|PM))\s*(?:(?P<building>(?:\w)+)) (?P<room>(?:\w| )*)"
+
 
 regex = re.compile(pattern)
 
@@ -34,6 +32,20 @@ IN_TIME_FORMAT = "%i:%M%p"
 # database
 backend = FileBackend("data")
 
+# Database Docs
+class Building(Document):
+    class Meta(Document.Meta):
+        pk = 'id'
+class Room:
+    def __init__(self):
+        self.data = []
+class Schedule:
+    def __init__(self):
+        self.data = []
+class Time:
+    def __init__(self):
+        self.data = []
+
 # Supports:
 #   help
 #   in
@@ -42,18 +54,20 @@ backend = FileBackend("data")
 #	populate
 def main(argv):
     directive = "help"
+
     options = {"help"     : pub_help,
                "in"       : pub_get_room_in,
                "import"   : pub_import_json,
                "export"   : pub_export_json,
                "populate" : pub_populate}
+
     if options.has_key(argv[0]):
         directive = argv[0]
     options[directive](argv[1:])
 
 
 def pub_help(args):
-    print("Help")
+    print("Usage: ")
     return
 def pub_get_room_in(args):
     print("Getting a room in "+ args[0])
@@ -72,6 +86,7 @@ def pub_populate(args):
     return
 
 def populate(source_file):
+    backend.create_index(Building, 'id')
 
     print "Loading %s..." % source_file,
     soup = BeautifulSoup(open(source_file, 'r'))
@@ -84,8 +99,10 @@ def populate(source_file):
         text = row.get_text().encode('ascii', 'ignore')
 
         # See if pattern matches
-        result = regex.match(text)
-        if (result is None):
+        # result = re.search(regex, text)
+
+        result = regex.search(text)
+        if result is None:
             continue
 
         # Get capture groups
@@ -96,32 +113,42 @@ def populate(source_file):
         end_time = result.group("end_time")
 
 
-        print "%s %s" % (building, room)
-        
-        #question: we have 2 building objects v ^
-        #how do we distinguish oops
-        db_building = backend.get(Building, {'id': building})
-
-        time = Time({'start': start_time, 'end': end_time, 'days': days})
-        schedule = Schedule({'period': 'Fall 2015', 'time': time}) # WONT need to merge
+        print "Parsing session: %s %s : %s %s-%s" % (building, room, days, start_time, end_time)
 
 
-        if db_building is None:
-            db_building = Building({'id': building, 'rooms': [room]})
+        db_buildings = backend.filter(Building, {'id': building})
+        if len(db_buildings) == 0:
+            db_building = Building({'id': building})
+            db_building.save(backend)
+            backend.commit()
+            print("Created building")
         else:
-            db_rooms = db_building.rooms
+            db_building = db_buildings[0]
+            print("Building exists")
 
-            if db_rooms is None:
-                db_rooms = [Room({'id': room})]
+        print(db_building)
 
-            db_room = db_rooms.get(Room, {'id': room})
-
-            if db_room is None:
-                db_room = Room({'id': room})
-
-            db_building.rooms.append(room)
-
-        db_building.save(backend)
+        #
+        # time = Time({'start': start_time, 'end': end_time, 'days': days})
+        # schedule = Schedule({'period': 'Fall 2015', 'time': time}) # WONT need to merge
+        #
+        #
+        # if db_building is None:
+        #
+        # else:
+        #     db_rooms = db_building.rooms
+        #
+        #     if db_rooms is None:
+        #         db_rooms = [Room({'id': room})]
+        #
+        #     db_room = db_rooms.get(Room, {'id': room})
+        #
+        #     if db_room is None:
+        #         db_room = Room({'id': room})
+        #
+        #     db_building.rooms.append(room)
+        #
+        # db_building.save(backend)
 
 
 def get_available_rooms(building, time):
@@ -140,26 +167,16 @@ def get_available_rooms(building, time):
         # building instead.
         print 'There are no available rooms in your building. :('
 
+#
+# class Classroom(object):
+#     def is_available(self, time):
+#         return True
+#
+#     def __eq__(self, other):
+#         return self.number == other.number
+#
+#     # def when_available():
 
-class Classroom(object):
-    def is_available(self, time):
-        return True
-
-    def __eq__(self, other):
-        return self.number == other.number
-
-    # def when_available():
-
-
-# Database Docs
-class Building(Document):
-    pass
-class Room(Document):
-    pass
-class Schedule:
-    pass
-class Time:
-    pass
 
 
 if __name__ == "__main__":
