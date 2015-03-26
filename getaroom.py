@@ -34,8 +34,7 @@ backend = FileBackend("data")
 
 # Database Docs
 class Building(Document):
-    class Meta(Document.Meta):
-        pk = 'id'
+    pass
 class Room:
     def __init__(self):
         self.data = []
@@ -86,7 +85,6 @@ def pub_populate(args):
     return
 
 def populate(source_file):
-    backend.create_index(Building, 'id')
 
     print "Loading %s..." % source_file,
     soup = BeautifulSoup(open(source_file, 'r'))
@@ -113,21 +111,25 @@ def populate(source_file):
         end_time = result.group("end_time")
 
 
-        print "Parsing session: %s %s : %s %s-%s" % (building, room, days, start_time, end_time)
+        # print "Parsing session: %s %s : %s %s-%s" % (building, room, days, start_time, end_time)
 
 
+        # Add buildings
         db_buildings = backend.filter(Building, {'id': building})
         if len(db_buildings) == 0:
-            db_building = Building({'id': building})
+            db_building = Building({'id': building, 'rooms': []})
             db_building.save(backend)
-            backend.commit()
-            print("Created building")
+            # print("Created building")
         else:
             db_building = db_buildings[0]
-            print("Building exists")
+            # print("Building exists")
 
+        # Add rooms to buildings
+        if room not in db_building.rooms:
+            db_building.rooms.append(room)
         print(db_building)
-
+        db_building.save(backend)
+        backend.commit()
         #
         # time = Time({'start': start_time, 'end': end_time, 'days': days})
         # schedule = Schedule({'period': 'Fall 2015', 'time': time}) # WONT need to merge
