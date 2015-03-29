@@ -5,8 +5,8 @@ import time
 import collections
 import sys
 import re
-from blitzdb import Document
-from blitzdb import FileBackend
+import sqlite3
+import json
 
 # Example match:
 # M W F
@@ -14,7 +14,7 @@ from blitzdb import FileBackend
 # 1:10PM
 # # LITRV 1670
 pattern = "(?P<days>(?:(?:M|T|W|R|F)\s?)+)\s*(?P<start_time>\d\d?:\d\d(?:AM|PM))\s*(?P<end_time>\d\d?:\d\d(?:AM|PM))\s*(?:(?P<building>(?:\w)+)) (?P<room>(?:\w| )*)"
-
+database = "timetable.db"
 
 regex = re.compile(pattern)
 
@@ -29,21 +29,7 @@ day_lookup = {
 # eg. 1:25PM
 IN_TIME_FORMAT = "%i:%M%p"
 
-# database
-backend = FileBackend("data")
 
-# Database Docs
-class Building(Document):
-    pass
-class Room:
-    def __init__(self):
-        self.data = []
-class Schedule:
-    def __init__(self):
-        self.data = []
-class Time:
-    def __init__(self):
-        self.data = []
 
 # Supports:
 #   help
@@ -85,6 +71,8 @@ def pub_populate(args):
     return
 
 def populate(source_file):
+    # file = open(database, 'w')
+    con = sqlite3.connect('data.db')
 
     print "Loading %s..." % source_file,
     soup = BeautifulSoup(open(source_file, 'r'))
@@ -110,47 +98,64 @@ def populate(source_file):
         start_time = result.group("start_time")
         end_time = result.group("end_time")
 
+        # print(json.dumps(days))
 
-        # print "Parsing session: %s %s : %s %s-%s" % (building, room, days, start_time, end_time)
+        with con:
+            cur = con.cursor()
+
+            # Insert buildings
+            cur.execute("SELECT * FROM buildings WHERE code = '"+building+"';")
+            rows = cur.fetchall()
+            if len(rows) == 0:
+                cur.execute("INSERT INTO buildings VALUES(null, '"+building+"', null);")
+                building_id = cur.lastrowid
+            else:
+                building_id = rows[0][0]
+
+            # Insert rooms
+            cur.execute("SELECT * FROM rooms WHERE building_id = '"+str(building_id)+"' AND name = '"+room+"';")
+            rows = cur.fetchall()
+            if len(rows) == 0:
+                cur.execute("INSERT INTO rooms VALUES(null, '"+room+"', "+str(building_id)+");")
+                room_id = cur.lastrowid
+            else:
+                room_id = rows[0][0]
+
+            days = days.replace(" ", "")
+            days_list = list(days)
+            days_string = json.dumps(days_list)
+            cur.execute("INSERT INTO times VALUES(null, '"+str(room_id)+"', '"+start_time+"', '"+end_time+"', '"+days_string+"');")
 
 
-        # Add buildings
-        db_buildings = backend.filter(Building, {'id': building})
-        if len(db_buildings) == 0:
-            db_building = Building({'id': building, 'rooms': []})
-            db_building.save(backend)
-            # print("Created building")
-        else:
-            db_building = db_buildings[0]
-            # print("Building exists")
 
-        # Add rooms to buildings
-        if room not in db_building.rooms:
-            db_building.rooms.append(room)
-        print(db_building)
-        db_building.save(backend)
-        backend.commit()
-        #
-        # time = Time({'start': start_time, 'end': end_time, 'days': days})
-        # schedule = Schedule({'period': 'Fall 2015', 'time': time}) # WONT need to merge
-        #
-        #
-        # if db_building is None:
-        #
-        # else:
-        #     db_rooms = db_building.rooms
-        #
-        #     if db_rooms is None:
-        #         db_rooms = [Room({'id': room})]
-        #
-        #     db_room = db_rooms.get(Room, {'id': room})
-        #
-        #     if db_room is None:
-        #         db_room = Room({'id': room})
-        #
-        #     db_building.rooms.append(room)
-        #
-        # db_building.save(backend)
+            # # print "Parsing session: %s %s : %s %s-%s" % (building, room, days, start_time, end_time)
+            #
+            # # Add buildings
+            # db_buildings = backend.filter(Building, {'id': building})
+            # if len(db_buildings) == 0:
+            #     db_building = Building({'id': building, 'rooms': []})
+            #     db_building.save(backend)
+            #     # print("Created building")
+            # else:
+            #     db_building = db_buildings[0]
+            #     # print("Building exists")
+            #
+            # # Add rooms to buildings
+            # room_data = {'id': room, 'schedule': schedule}
+            # print(room_data)
+            # if room_data not in db_building.rooms:
+            #     db_building.rooms.append(room_data)
+            # print(db_building)
+            # db_building.save(backend)
+            #
+            # # Add times to schedule
+            # days_array = days.split(' ')
+            # time = {'days': days_array, 'start': start_time, 'end': end_time}
+            #
+            #
+            # backend.commit()
+    con.close()
+
 
 
 def get_available_rooms(building, time):
@@ -186,6 +191,3 @@ if __name__ == "__main__":
         main(sys.argv[1:])
     else:
         pub_help(0)
-
-
-buildings = {}  # Name, List of Classes
