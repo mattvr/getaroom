@@ -27,13 +27,13 @@ day_lookup = {
 }
 
 day_translation = {
-    "Sunday": "S",
-    "Monday": "M",
-    "Tuesday": "T",
-    "Wednesday": "W",
-    "Thursday": "R",
-    "Friday": "F",
-    "Saturday": "X"
+    "Sunday"    : "S",
+    "Monday"    : "M",
+    "Tuesday"   : "T",
+    "Wednesday" : "W",
+    "Thursday"  : "R",
+    "Friday"    : "F",
+    "Saturday"  : "X"
 }
 
 # eg. 1:25PM
@@ -44,7 +44,6 @@ TIME_OUT_FORMAT = "%H:%M"
 class ClassRoom:
     def __init__(self):
         pass
-
 
 # Supports:
 # help
@@ -82,7 +81,7 @@ def pub_get_room_in(args):
         rows = cur.fetchall()
         if len(rows) == 0:
             print "Sorry, we don't have that building in our database! Try another."
-            return
+            continue
         building = rows[0]
 
         # Now let's get all the rooms from the building
@@ -93,65 +92,74 @@ def pub_get_room_in(args):
             return
         print "Found %i rooms!" % len(rooms)
 
-        # Get all the times from the building
-        cur.execute("SELECT * FROM times WHERE building_id = '" + str(building[0]) + "';")
-        times = cur.fetchall()
-        print "Found %i classes in this building" % len(times)
+        valid_rooms = []
+        for db_room in rooms:
+            cur.execute("SELECT * FROM times WHERE room_id = '"+ str(db_room[0]) +"';")
+            times = cur.fetchall()
 
-        current_time = datetime.now()
+            is_valid = True
+            next_unavailable = None
 
-        passing_times = []
-        passing_rooms = []
+            for class_time in times:
+                class_days = json.loads(class_time[5])
+                current_day = day_translation[time.strftime("%A")]
 
-        for class_time in times:
-            # print(class_time[3])
-            time_start_struct = time.strptime(class_time[3], TIME_OUT_FORMAT)
-            time_end_struct = time.strptime(class_time[4], TIME_OUT_FORMAT)
+                # Only look at classes occuring today
+                if current_day not in class_days:
+                    continue
 
-            passing_start = False
-            passing_end = False
-            passing_day = False
+                time_start = time.strptime(class_time[3], TIME_OUT_FORMAT)
+                time_end = time.strptime(class_time[4], TIME_OUT_FORMAT)
 
-            # Check days
-            current_day = day_translation[time.strftime("%A")]
-            days = json.loads(class_time[5])
-            if current_day not in days:
-                passing_day = True
+                if time_contained(time_start, time_end, datetime.now()):
+                    is_valid = False
+                    break
 
-            if passing_day:
-                passing_times.append(class_time)
-                continue
+                # Next class should represent when room is occupied
 
-            # Check hours and minutes
-            if current_time.time().hour < time_start_struct.tm_hour:
-                passing_start = True
-            elif current_time.time().hour == time_start_struct.tm_hour:
-                if current_time.time().minute < time_start_struct.tm_min:
-                    passing_start = True
+                # Next_unavailable is unset, and class_time > this time
+                if next_unavailable is None and time_greater(time_start.tm_hour, time_start.tm_min, datetime.now().hour, datetime.now().minute):
+                    next_unavailable = time_start
+                # Class_time < next_unavailable
+                elif next_unavailable is not None and time_greater(time_start.tm_hour, time_start.tm_min, datetime.now().hour, datetime.now().minute) and time_lesser(time_start.tm_hour, time_start.tm_min, next_unavailable.tm_hour, next_unavailable.tm_min):
+                    next_unavailable = time_start
 
-            if current_time.time().hour > time_end_struct.tm_hour:
-                passing_end = True
-            elif current_time.time().hour == time_start_struct.tm_hour:
-                if current_time.time().minute > time_end_struct.tm_min:
-                    passing_start = True
+            if is_valid:
+                valid_rooms.append((db_room, next_unavailable))
 
-            if passing_end or passing_start:
-                passing_times.append(class_time)
-
-        if len(passing_times) == 0:
+        if len(valid_rooms) == 0:
             print "Sorry, there are no rooms available in this building right now. :("
         else:
-            for p in passing_times:
-                if not p[1] in passing_rooms:
-                    passing_rooms.append(p[1])
-            print "Got %i available rooms:" % len(passing_rooms)
-            for r in passing_rooms:
-                cur.execute("SELECT * FROM rooms WHERE id = '" + str(r) + "';")
-                room = cur.fetchone()
-                print room[1]
+            # TODO: print next class time for this room
+            print "Got %i available rooms:" % len(valid_rooms)
+            for room, room_time in valid_rooms:
+                if room_time is not None:
+                    time_as_str = time.strftime(TIME_IN_FORMAT, room_time)
+                    print "%s %s is available until %s" % (building[1], room[1], time_as_str)
+                else:
+                    print "%s %s is available for the rest of the day." % (building[1], room[1])
         cur.close()
     return
 
+# This is ugly, I know.
+def time_contained(start, end, time):
+    # if time.hour >= start.tm_hour and time.hour <= end.tm_hour:
+    if start.tm_hour <= time.hour <= end.tm_hour:
+        # Same hour as start time
+        if (time.hour == start.tm_hour and time.minute >= start.tm_min and
+                (time.hour != end.tm_hour or time.minute <= end.tm_min)):
+            return True
+        # Later hour than start time
+        elif (time.hour > start.tm_hour and ((time.hour == end.tm_hour and
+                                              time.minute < end.tm_min) or (time.hour < end.tm_hour))):
+            return True
+    return False
+
+def time_greater(time1hour, time1min, time2hour, time2min):
+    return time1hour > time2hour or (time1hour == time2hour and time1min > time2min)
+
+def time_lesser(time1hour, time1min, time2hour, time2min):
+    return time1hour < time2hour or (time1hour == time2hour and time1min < time2min)
 
 def pub_populate(args):
     if len(args) == 0:
@@ -198,7 +206,7 @@ def populate(source_file):
             cur = con.cursor()
 
             # Insert buildings
-            cur.execute("SELECT * FROM buildings WHERE code = '" + building + "';")
+            cur.execute("SELECT * FROM buildings WHERE code = ?;", building)
             rows = cur.fetchall()
             if len(rows) == 0:
                 cur.execute("INSERT INTO buildings VALUES(NULL, '" + building + "', NULL);")
