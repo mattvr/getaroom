@@ -146,13 +146,10 @@ def pub_get_room_in(args):
                     passing_rooms.append(p[1])
             print "Got %i available rooms:" % len(passing_rooms)
             for r in passing_rooms:
-                print r
-
+                cur.execute("SELECT * FROM rooms WHERE id = '" + str(r) + "';")
+                room = cur.fetchone()
+                print room[1]
         cur.close()
-
-
-        # Loop through each room and determine if it's in use
-
     return
 
 
