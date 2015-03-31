@@ -11,10 +11,10 @@ import getaroom
 
 app = Flask(__name__)
 
-@app.route('/getaroom')
+@app.route('/getaroom', methods=['GET', 'POST'])
 def getaroom():
-    sender_no = request.args.get('msisdn', '')
-    body = request.args.get('text', '')
+    sender_no = request.values.get('msisdn', '')
+    body = request.values.get('text', '')
 
     # TODO: account for concatenated & unicode messages
     wit_response = send_to_wit(body)
