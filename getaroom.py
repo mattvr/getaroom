@@ -5,8 +5,8 @@ import re
 import sqlite3
 import json
 
+# External dependencies
 from bs4 import BeautifulSoup
-
 
 # Example match:
 # M W F
@@ -27,13 +27,13 @@ day_lookup = {
 }
 
 day_translation = {
-    "Sunday": "S",
-    "Monday": "M",
-    "Tuesday": "T",
-    "Wednesday": "W",
-    "Thursday": "R",
-    "Friday": "F",
-    "Saturday": "X"
+    "Sunday"    : "S",
+    "Monday"    : "M",
+    "Tuesday"   : "T",
+    "Wednesday" : "W",
+    "Thursday"  : "R",
+    "Friday"    : "F",
+    "Saturday"  : "X"
 }
 
 # eg. 1:25PM
@@ -45,18 +45,15 @@ class ClassRoom:
     def __init__(self):
         pass
 
-
 # Supports:
 # help
 #   in
-#	populate
+#   populate
 def main(argv):
     directive = "help"
 
     options = {"help": pub_help,
                "in": pub_get_room_in,
-               # "import"   : pub_import_json,
-               # "export"   : pub_export_json,
                "populate": pub_populate}
 
     if options.has_key(argv[0]):
@@ -65,96 +62,101 @@ def main(argv):
 
 
 def pub_help(args):
-    print("Usage: ")
+    print("Usage: python getaroom.py")
+    print("                           in [room]")
+    print("                           pupulate [source]")
     return
 
 
 def pub_get_room_in(args):
-    while 1:
-        building_string = raw_input("Enter a building: ")
-        print("Getting a room in " + building_string + "...")
-        con = sqlite3.connect('data.db')
+    building_string = args[0]
+    print("Getting a room in " + building_string + "...")
+    con = sqlite3.connect('data.db')
 
-        # building_string = args[0]
-        # First ensure we have that building
-        cur = con.cursor()
-        cur.execute("SELECT * FROM buildings WHERE code = '" + building_string + "';")
-        rows = cur.fetchall()
-        if len(rows) == 0:
-            print "Sorry, we don't have that building in our database! Try another."
-            return
-        building = rows[0]
+    # building_string = args[0]
+    # First ensure we have that building
+    cur = con.cursor()
+    cur.execute("SELECT * FROM buildings WHERE code = '" + building_string + "';")
+    rows = cur.fetchall()
+    if len(rows) == 0:
+        print "Sorry, we don't have that building in our database! Try another."
+    building = rows[0]
 
-        # Now let's get all the rooms from the building
-        cur.execute("SELECT * FROM rooms WHERE building_id = '" + str(building[0]) + "';")
-        rooms = cur.fetchall()
-        if len(rooms) == 0:
-            print "No rooms found in that building. How strange."
-            return
-        print "Found %i rooms!" % len(rooms)
+    # Now let's get all the rooms from the building
+    cur.execute("SELECT * FROM rooms WHERE building_id = '" + str(building[0]) + "';")
+    rooms = cur.fetchall()
+    if len(rooms) == 0:
+        print "No rooms found in that building. How strange."
+        return
+    print "Found %i rooms!" % len(rooms)
 
-        # Get all the times from the building
-        cur.execute("SELECT * FROM times WHERE building_id = '" + str(building[0]) + "';")
+    valid_rooms = []
+    for db_room in rooms:
+        cur.execute("SELECT * FROM times WHERE room_id = '"+ str(db_room[0]) +"';")
         times = cur.fetchall()
-        print "Found %i classes in this building" % len(times)
 
-        current_time = datetime.now()
-
-        passing_times = []
-        passing_rooms = []
+        is_valid = True
+        next_unavailable = None
 
         for class_time in times:
-            # print(class_time[3])
-            time_start_struct = time.strptime(class_time[3], TIME_OUT_FORMAT)
-            time_end_struct = time.strptime(class_time[4], TIME_OUT_FORMAT)
-
-            passing_start = False
-            passing_end = False
-            passing_day = False
-
-            # Check days
+            class_days = json.loads(class_time[5])
             current_day = day_translation[time.strftime("%A")]
-            days = json.loads(class_time[5])
-            if current_day not in days:
-                passing_day = True
 
-            if passing_day:
-                passing_times.append(class_time)
+            # Only look at classes occuring today
+            if current_day not in class_days:
                 continue
 
-            # Check hours and minutes
-            if current_time.time().hour < time_start_struct.tm_hour:
-                passing_start = True
-            elif current_time.time().hour == time_start_struct.tm_hour:
-                if current_time.time().minute < time_start_struct.tm_min:
-                    passing_start = True
+            time_start = time.strptime(class_time[3], TIME_OUT_FORMAT)
+            time_end = time.strptime(class_time[4], TIME_OUT_FORMAT)
 
-            if current_time.time().hour > time_end_struct.tm_hour:
-                passing_end = True
-            elif current_time.time().hour == time_start_struct.tm_hour:
-                if current_time.time().minute > time_end_struct.tm_min:
-                    passing_start = True
+            if time_contained(time_start, time_end, datetime.now()):
+                is_valid = False
+                break
 
-            if passing_end or passing_start:
-                passing_times.append(class_time)
+            # Next class should represent when room is occupied
 
-        if len(passing_times) == 0:
-            print "Sorry, there are no rooms available in this building right now. :("
-        else:
-            for p in passing_times:
-                if not p[1] in passing_rooms:
-                    passing_rooms.append(p[1])
-            print "Got %i available rooms:" % len(passing_rooms)
-            for r in passing_rooms:
-                print r
+            # Next_unavailable is unset, and class_time > this time
+            if next_unavailable is None and time_greater(time_start.tm_hour, time_start.tm_min, datetime.now().hour, datetime.now().minute):
+                next_unavailable = time_start
+            # Class_time < next_unavailable
+            elif next_unavailable is not None and time_greater(time_start.tm_hour, time_start.tm_min, datetime.now().hour, datetime.now().minute) and time_lesser(time_start.tm_hour, time_start.tm_min, next_unavailable.tm_hour, next_unavailable.tm_min):
+                next_unavailable = time_start
 
-        cur.close()
+        if is_valid:
+            valid_rooms.append((db_room, next_unavailable))
 
+    if len(valid_rooms) == 0:
+        print "Sorry, there are no rooms available in this building right now. :("
+    else:
+        # TODO: print next class time for this room
+        print "Got %i available rooms:" % len(valid_rooms)
+        for room, room_time in valid_rooms:
+            if room_time is not None:
+                time_as_str = time.strftime(TIME_IN_FORMAT, room_time)
+                print "%s %s is available until %s" % (building[1], room[1], time_as_str)
+            else:
+                print "%s %s is available for the rest of the day." % (building[1], room[1])
+    cur.close()
 
-        # Loop through each room and determine if it's in use
+# This is ugly, I know.
+def time_contained(start, end, time):
+    # if time.hour >= start.tm_hour and time.hour <= end.tm_hour:
+    if start.tm_hour <= time.hour <= end.tm_hour:
+        # Same hour as start time
+        if (time.hour == start.tm_hour and time.minute >= start.tm_min and
+                (time.hour != end.tm_hour or time.minute <= end.tm_min)):
+            return True
+        # Later hour than start time
+        elif (time.hour > start.tm_hour and ((time.hour == end.tm_hour and
+                                              time.minute < end.tm_min) or (time.hour < end.tm_hour))):
+            return True
+    return False
 
-    return
+def time_greater(time1hour, time1min, time2hour, time2min):
+    return time1hour > time2hour or (time1hour == time2hour and time1min > time2min)
 
+def time_lesser(time1hour, time1min, time2hour, time2min):
+    return time1hour < time2hour or (time1hour == time2hour and time1min < time2min)
 
 def pub_populate(args):
     if len(args) == 0:
@@ -169,6 +171,8 @@ def pub_populate(args):
 # Writes a SQLite database from source_file html table
 def populate(source_file):
     con = sqlite3.connect('data.db')
+    building_lookup = json.loads(open("buildings.json").read())
+
 
     print "Loading %s..." % source_file,
     soup = BeautifulSoup(open(source_file, 'r'))
@@ -177,7 +181,7 @@ def populate(source_file):
     rows = soup.table.tbody.find_all('tr')
     rows = rows[1:]  # ignore title row
 
-    print "Writing database..."
+    print "Writing database, this could take a while..."
     for i, row in enumerate(rows):
         text = row.get_text().encode('ascii', 'ignore')
 
@@ -201,10 +205,15 @@ def populate(source_file):
             cur = con.cursor()
 
             # Insert buildings
-            cur.execute("SELECT * FROM buildings WHERE code = '" + building + "';")
+            cur.execute("SELECT * FROM buildings WHERE code = '"+ building +"';")
             rows = cur.fetchall()
             if len(rows) == 0:
-                cur.execute("INSERT INTO buildings VALUES(NULL, '" + building + "', NULL);")
+                try:
+                    building_name = building_lookup['buildings'][building]
+                except:
+                    print "Building not found in name lookup: %s" % building
+                    return
+                cur.execute("INSERT INTO buildings VALUES(NULL, '" + building + "', '"+ building_name +"');")
                 building_id = cur.lastrowid
             else:
                 building_id = rows[0][0]
