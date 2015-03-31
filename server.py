@@ -2,11 +2,12 @@ import json
 import httplib, urllib
 
 # External dependencies
-import wit
 import Queue
 from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
+
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO
+import getaroom
 
 app = Flask(__name__)
 
