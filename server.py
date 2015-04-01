@@ -8,16 +8,21 @@ import Queue
 from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
 
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER
+from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, BLACKLIST
 from getaroom import get_available_rooms
 
 app = Flask(__name__)
+ban_lookup = json.loads(open(BLACKLIST).read())
 
 logger.basicConfig(filename=LOGGER_SERVER,level=logger.DEBUG)
 @app.route('/getaroom', methods=['GET', 'POST'])
 def getaroom():
     sender_no = request.values.get('msisdn')
     body = request.values.get('text')
+
+    if is_banned(sender_no):
+        logger.warn("Number banned! - %s - %s", (body, sender_no))
+        return "Number banned"
 
     if sender_no is None or body is None:
         return 'Invalid message.'
@@ -27,7 +32,7 @@ def getaroom():
     # TODO: account for concatenated & unicode messages
     wit_response = send_to_wit(body)
     sms_response = parse_response(json.loads(wit_response))
-    send_sms(sender_no, sms_response)
+    # send_sms(sender_no, sms_response)
     print wit_response
 
     return sms_response
@@ -73,6 +78,14 @@ def parse_response(response):
                 return string
 
     return "Invalid message. Try 'get a room in TORG'"
+
+def is_banned(number):
+
+    bans = ban_lookup['bans']
+    if number in bans:
+        return True
+    return False
+
 
 def send_sms(number, message):
     msg = {
