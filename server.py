@@ -32,15 +32,13 @@ def getaroom():
     logger.info("Received request - %s - %s" % (body, sender_no))
 
     # TODO: account for concatenated & unicode messages
-    print 'Received %s from %d' % (body, sender_no)
     wit_response = send_to_wit(body)
-    print wit_response
     sms_response = parse_response(json.loads(wit_response))
-    print sms_response
     if DEBUG_SMS:
         print("SMS DEBUG: %s - from - %s" % (sms_response, sender_no))
     else:
         send_sms(sender_no, sms_response)
+    print wit_response
 
     return sms_response
 
@@ -58,7 +56,7 @@ def parse_response(response):
     if intent == 'getaroom':
         return parse_getaroom(response)
     elif intent == 'help':
-        return 'This service finds you a vacant room on Virginia Tech\'s campus.\n\nTry: "get a room in TORG"'
+        return 'This service finds you a vacant room on Virginia Tech\'s campus.\nTry: "get a room in TORG"'
     elif intent == 'stop':
         return parse_joke(response)
     else:
@@ -105,14 +103,14 @@ def is_banned(number):
     return False
 
 def parse_joke(response):
-    string = 'Congratulations! You have signed up for Emperor Penguin Facts.\n\n'
+    string = 'Congratulations! You have been signed up for Emperor Penguin Facts.\n\n'
     num = random.randint(0, 4)
     if num is 0:
         string += 'Did you know emperor penguins stand up to 4ft tall?'
     elif num is 1:
         string += 'Male emperor penguins are the primary caregivers for newborn offspring.'
     elif num is 2:
-        string += 'Emperor penguins are featured on more than 30 countries\' stamps.'
+        string += 'Emperor penguins are featured on more than 30 countries stamps.'
     elif num is 3:
         string += 'Emperor penguins fast longer than any other bird, going 115 days without eating during chick incubation!'
     elif num is 4:
