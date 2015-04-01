@@ -244,6 +244,7 @@ def populate(source_file):
             cur.execute(cmd, (building,))
             rows = cur.fetchall()
             if len(rows) == 0:
+                building_name = ''
                 try:
                     building_name = building_lookup['buildings'][building]
                 except:
