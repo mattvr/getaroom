@@ -8,7 +8,7 @@ import Queue
 from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
 
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, BLACKLIST
+from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, BLACKLIST, DEBUG_SMS
 from getaroom import get_available_rooms
 
 app = Flask(__name__)
@@ -32,7 +32,10 @@ def getaroom():
     # TODO: account for concatenated & unicode messages
     wit_response = send_to_wit(body)
     sms_response = parse_response(json.loads(wit_response))
-    send_sms(sender_no, sms_response)
+    if not DEBUG_SMS:
+        send_sms(sender_no, sms_response)
+    else:
+        print "SMS: %s - to - %s" % (sms_response, sender_no)
     print wit_response
 
     return sms_response
@@ -45,6 +48,7 @@ def send_to_wit(message):
     conn.request('GET', url, '', headers)
     response = conn.getresponse()
     return response.read()
+
 
 def parse_response(response):
     if 'outcomes' in response and len(response['outcomes']) > 0:
@@ -72,15 +76,16 @@ def parse_response(response):
                     if not room.end_availability:
                         string += '- %s %s is available for the rest of the day' % (room.building_code, room.number)
                     else:
-                        string += '- %s %s is available until %s' % (room.building_code, room.number, room.end_availability)
+                        string += '- %s %s is available until %s' % (
+                        room.building_code, room.number, room.end_availability)
                     if i is not iterations - 1:
                         string += '\n'
                 return string
 
     return "Invalid message. Try 'get a room in TORG'"
 
-def is_banned(number):
 
+def is_banned(number):
     bans = ban_lookup['bans']
     if number in bans:
         return True
@@ -89,12 +94,12 @@ def is_banned(number):
 
 def send_sms(number, message):
     msg = {
-        'reqtype'   : 'json',
-        'api_key'   : NEXMO_API_KEY,
+        'reqtype': 'json',
+        'api_key': NEXMO_API_KEY,
         'api_secret': NEXMO_API_SECRET,
-        'from'      : NEXMO_PHONE_NO,
-        'to'        : number,
-        'text'      : message
+        'from': NEXMO_PHONE_NO,
+        'to': number,
+        'text': message
     }
     sms = NexmoMessage(msg)
     sms.set_text_info(msg['text'])
@@ -102,6 +107,7 @@ def send_sms(number, message):
     if not response:
         logger.error("[NEXMO] Failed to send response: %s [to] %s" % (message, number))
         print "Failed to send response"
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
