@@ -53,13 +53,14 @@ def parse_response(response):
                 if len(rooms) == 0:
                     return "Sorry, there aren't any rooms available in that building right now."
                 else:
+                    building_name = rooms[0].building_name
                     string = ''
                     if len(rooms) == 1:
-                        string += 'Hey! I found one room in %s:\n' % (building,)
+                        string += 'Hey! I found one room in %s:\n' % (building_name,)
                     elif len(rooms) <= 2:
-                        string += 'Hey! I found %d rooms in %s:\n' % (len(rooms), building)
+                        string += 'Hey! I found %d rooms in %s:\n' % (len(rooms), building_name)
                     else:
-                        string += 'Hey! Here are the three best rooms in %s:\n' % (building,)
+                        string += 'Hey! Here are the three best rooms in %s:\n' % (building_name,)
 
                 iterations = min((3, len(rooms)))
                 for i, room in enumerate(rooms[:iterations]):
