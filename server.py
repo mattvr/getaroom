@@ -78,12 +78,12 @@ def parse_getaroom(response):
                     string = ''
                     if len(rooms) == 1:
                         string += 'Hey! I found one room in %s:\n\n' % (building_name,)
-                    elif len(rooms) <= 3:
+                    elif len(rooms) <= 5:
                         string += 'Hey! I found %d rooms in %s:\n\n' % (len(rooms), building_name)
                     else:
-                        string += 'Hey! Here are the three available rooms in %s:\n\n' % (building_name,)
+                        string += 'Hey! Here are five available rooms in %s:\n\n' % (building_name,)
 
-                iterations = min((3, len(rooms)))
+                iterations = min((5, len(rooms)))
                 for i, room in enumerate(rooms[:iterations]):
                     if not room.end_availability:
                         string += '- %s %s (open rest of day)' % (room.building_code, room.number)
@@ -94,7 +94,7 @@ def parse_getaroom(response):
 
                 return string
 
-    return "Invalid message. Try 'get a room in TORG'"
+    return 'Hm, I don\'t know that building. Try using the building code.\n\n (e.g. "get a room in MCB")'
 
 def is_banned(number):
     bans = ban_lookup['bans']
