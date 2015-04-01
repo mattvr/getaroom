@@ -87,6 +87,7 @@ def send_sms(number, message):
     sms.set_text_info(msg['text'])
     response = sms.send_request()
     if not response:
+        logger.error("[NEXMO] Failed to send response: %s [to] %s" % (message, number))
         print "Failed to send response"
 
 if __name__ == "__main__":
