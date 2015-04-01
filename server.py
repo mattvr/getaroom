@@ -9,7 +9,7 @@ from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
 
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER
-from getaroom import get_available_rooms, ClassRoom
+from getaroom import get_available_rooms
 
 app = Flask(__name__)
 
@@ -34,9 +34,9 @@ def getaroom():
 
 def send_to_wit(message):
     conn = httplib.HTTPSConnection('api.wit.ai')
-    headers = {'Authorization': 'Bearer %s' % (WIT_ACCESS_TOKEN)}
+    headers = {'Authorization': 'Bearer %s' % (WIT_ACCESS_TOKEN,)}
     params = urllib.urlencode({'v': '20141022', 'q': message})
-    url = '/message?%s' % (params)
+    url = '/message?%s' % (params,)
     conn.request('GET', url, '', headers)
     response = conn.getresponse()
     return response.read()
@@ -55,11 +55,11 @@ def parse_response(response):
                 else:
                     string = ''
                     if len(rooms) == 1:
-                        string += 'Hey! I found one room in %s:\n' % (building)
+                        string += 'Hey! I found one room in %s:\n' % (building,)
                     elif len(rooms) <= 2:
                         string += 'Hey! I found %d rooms in %s:\n' % (len(rooms), building)
                     else:
-                        string += 'Hey! Here are the three best rooms in %s:\n' % (building)
+                        string += 'Hey! Here are the three best rooms in %s:\n' % (building,)
 
                 iterations = min((3, len(rooms)))
                 for i, room in enumerate(rooms[:iterations]):
