@@ -115,7 +115,7 @@ def time_lesser(time1hour, time1min, time2hour, time2min):
 
 def pub_populate(args):
     if len(args) == 0:
-        source_file = 'timetable.html'
+        source_file = 'data/timetable.html'
     else:
         source_file = args[0]
 

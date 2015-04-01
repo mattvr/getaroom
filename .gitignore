@@ -55,7 +55,6 @@ target/
 
 .iml
 .idea
-data
 
 # Specific to us
 config.py
