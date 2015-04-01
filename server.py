@@ -32,7 +32,7 @@ def getaroom():
     # TODO: account for concatenated & unicode messages
     wit_response = send_to_wit(body)
     sms_response = parse_response(json.loads(wit_response))
-    # send_sms(sender_no, sms_response)
+    send_sms(sender_no, sms_response)
     print wit_response
 
     return sms_response
