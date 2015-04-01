@@ -5,3 +5,4 @@ vendor
 .idea/*
 data
 data.db
+*.log

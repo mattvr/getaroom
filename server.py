@@ -1,17 +1,19 @@
 import json
 from datetime import datetime
 import httplib, urllib
+import logging as logger
 
 # External dependencies
 import Queue
 from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
 
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO
+from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER
 from getaroom import get_available_rooms, ClassRoom
 
 app = Flask(__name__)
 
+logger.basicConfig(filename=LOGGER_SERVER,level=logger.DEBUG)
 @app.route('/getaroom', methods=['GET', 'POST'])
 def getaroom():
     sender_no = request.values.get('msisdn')
@@ -19,6 +21,8 @@ def getaroom():
 
     if sender_no is None or body is None:
         return 'Invalid message.'
+
+    logger.info("Received request - %s - %s" % (body, sender_no))
 
     # TODO: account for concatenated & unicode messages
     wit_response = send_to_wit(body)
@@ -49,11 +53,23 @@ def parse_response(response):
                 if len(rooms) == 0:
                     return "Sorry, there aren't any rooms available in that building right now."
                 else:
-                    best_room = rooms[0]
-                    if not best_room.end_availability:
-                        return "%s %s is available for the rest of the day" % (best_room.building_code, best_room.number)
+                    string = ''
+                    if len(rooms) == 1:
+                        string += 'Hey! I found one room in %s:\n' % (building)
+                    elif len(rooms) <= 2:
+                        string += 'Hey! I found %d rooms in %s:\n' % (len(rooms), building)
                     else:
-                        return "%s %s is available until %s" % (best_room.building_code, best_room.number, best_room.end_availability)
+                        string += 'Hey! Here are the three best rooms in %s:\n' % (building)
+
+                iterations = min((3, len(rooms)))
+                for i, room in enumerate(rooms[:iterations]):
+                    if not room.end_availability:
+                        string += '- %s %s is available for the rest of the day' % (room.building_code, room.number)
+                    else:
+                        string += '- %s %s is available until %s' % (room.building_code, room.number, room.end_availability)
+                    if i is not iterations - 1:
+                        string += '\n'
+                return string
 
     return "Invalid message. Try 'get a room in TORG'"
 

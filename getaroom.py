@@ -5,8 +5,11 @@ import sys
 import re
 import sqlite3
 import json
+import logging as logger
 
-from config import SQLITE_DATABASE, BUIlDING_NAME_LOOKUP
+from config import SQLITE_DATABASE, BUIlDING_NAME_LOOKUP, LOGGER_SERVICE
+
+logger.basicConfig(filename=LOGGER_SERVICE,level=logger.DEBUG)
 
 # External dependencies
 from bs4 import BeautifulSoup
@@ -17,7 +20,6 @@ from bs4 import BeautifulSoup
 # 1:10PM
 # # LITRV 1670
 pattern = "(?P<days>(?:(?:M|T|W|R|F)\s?)+)\s*(?P<start_time>\d\d?:\d\d(?:AM|PM))\s*(?P<end_time>\d\d?:\d\d(?:AM|PM))\s*(?:(?P<building>(?:\w)+)) (?P<room>(?:\w| )*)"
-
 regex = re.compile(pattern)
 
 day_lookup = {
@@ -29,7 +31,6 @@ day_lookup = {
     6: "X",
     7: "S"
 }
-
 
 day_translation = {
     "Sunday"    : "S",
@@ -122,87 +123,16 @@ def pub_populate(args):
     return
 
 
-# Writes a SQLite database from source_file html table
-def populate(source_file):
-    con = sqlite3.connect(SQLITE_DATABASE)
-    building_lookup = json.loads(open(BUIlDING_NAME_LOOKUP).read())
-
-
-    print "Loading %s..." % source_file,
-    soup = BeautifulSoup(open(source_file, 'r'))
-    print '\033[92m' + "done" + '\033[0m'
-
-    rows = soup.table.tbody.find_all('tr')
-    rows = rows[1:]  # ignore title row
-
-    print "Writing database, this could take a while..."
-    for i, row in enumerate(rows):
-        text = row.get_text().encode('ascii', 'ignore')
-
-        # See if pattern matches
-        # result = re.search(regex, text)
-
-        result = regex.search(text)
-        if result is None:
-            continue
-
-        # Get capture groups
-        days = result.group("days")
-        building = result.group("building")
-        room = result.group("room")
-        start_time = result.group("start_time")
-        end_time = result.group("end_time")
-
-        # print(json.dumps(days))
-
-        with con:
-            cur = con.cursor()
-
-            # Insert buildings
-            cur.execute("SELECT * FROM buildings WHERE code = '"+ building +"';")
-            rows = cur.fetchall()
-            if len(rows) == 0:
-                try:
-                    building_name = building_lookup['buildings'][building]
-                except:
-                    print "Building not found in name lookup: %s" % building
-                    return
-                cur.execute("INSERT INTO buildings VALUES(NULL, '" + building + "', '"+ building_name +"');")
-                building_id = cur.lastrowid
-            else:
-                building_id = rows[0][0]
-
-            # Insert rooms
-            cur.execute("SELECT * FROM rooms WHERE building_id = '" + str(building_id) + "' AND name = '" + room + "';")
-            rows = cur.fetchall()
-            if len(rows) == 0:
-                cur.execute("INSERT INTO rooms VALUES(NULL, '" + room + "', " + str(building_id) + ");")
-                room_id = cur.lastrowid
-            else:
-                room_id = rows[0][0]
-
-            days = days.replace(" ", "")
-            days_list = list(days)
-            days_string = json.dumps(days_list)
-
-            time_start_struct = time.strptime(start_time, TIME_IN_FORMAT)
-            time_end_struct = time.strptime(end_time, TIME_IN_FORMAT)
-
-            time_start_db = time.strftime(TIME_OUT_FORMAT, time_start_struct)
-            time_end_db = time.strftime(TIME_OUT_FORMAT, time_end_struct)
-
-            cur.execute("INSERT INTO times VALUES(NULL, '" + str(room_id) + "', '" + str(
-                building_id) + "', '" + time_start_db + "', '" + time_end_db + "', '" + days_string + "');")
-    con.close()
-
-
 def get_available_rooms(building_str, in_class_time):
     con = sqlite3.connect(SQLITE_DATABASE)
     cur = con.cursor()
-    cur.execute("SELECT * FROM buildings WHERE code = '" + building_str + "';")
+
+    cmd = "SELECT * FROM buildings WHERE code = ?"
+    cur.execute(cmd, (building_str,))
+
     rows = cur.fetchall()
     if len(rows) == 0:
-        # TODO: Log building not found
+        logger.warn("Unable to locate building: %s" % building_str)
         return []
     building = rows[0]
 
@@ -210,7 +140,7 @@ def get_available_rooms(building_str, in_class_time):
     cur.execute("SELECT * FROM rooms WHERE building_id = '" + str(building[0]) + "';")
     rooms = cur.fetchall()
     if len(rooms) == 0:
-        # TODO: Log no rooms found
+        logger.error("No rooms in building: %s" % building_str)
         return []
 
     valid_rooms = []
@@ -262,17 +192,90 @@ def get_available_rooms(building_str, in_class_time):
             if room_time is not None:
                 time_as_str = time.strftime(TIME_IN_FORMAT, room_time)
                 result_class_room.end_availability = time_as_str
-                # print "%s %s is available until %s" % (building[1], room[1], time_as_str)
             else:
                 result_class_room.end_availability = False
                 result_class_room.weight += 20
-                # print "%s %s is available for the rest of the day." % (building[1], room[1])
             return_rooms.append(result_class_room)
     cur.close()
 
     return_rooms.sort(key=operator.attrgetter('weight'), reverse=True)
     return return_rooms
 
+
+# Writes a SQLite database from source_file html table
+def populate(source_file):
+    con = sqlite3.connect(SQLITE_DATABASE)
+    building_lookup = json.loads(open(BUIlDING_NAME_LOOKUP).read())
+
+    logger.info("[POP] Loading beautifulsoup file")
+    print "Loading %s..." % source_file,
+    soup = BeautifulSoup(open(source_file, 'r'))
+    print '\033[92m' + "done" + '\033[0m'
+
+    rows = soup.table.tbody.find_all('tr')
+    rows = rows[1:]  # ignore title row
+
+    print "Writing database, this could take a while..."
+    logger.info("[POP] Writing DB...")
+    for i, row in enumerate(rows):
+        text = row.get_text().encode('ascii', 'ignore')
+
+        # See if pattern matches
+        # result = re.search(regex, text)
+
+        result = regex.search(text)
+        if result is None:
+            continue
+
+        # Get capture groups
+        days = result.group("days")
+        building = result.group("building")
+        room = result.group("room")
+        start_time = result.group("start_time")
+        end_time = result.group("end_time")
+
+        # print(json.dumps(days))
+
+        with con:
+            cur = con.cursor()
+
+            # Insert buildings
+            cmd = "SELECT * FROM buildings WHERE code = ?"
+            cur.execute(cmd, (building,))
+            rows = cur.fetchall()
+            if len(rows) == 0:
+                try:
+                    building_name = building_lookup['buildings'][building]
+                except:
+                    print "Building not found in name lookup: %s" % building
+                    logger.error("[POP] Building name not found - %s" % building)
+                cur.execute("INSERT INTO buildings VALUES(NULL, '" + building + "', '" + building_name + "');")
+                building_id = cur.lastrowid
+            else:
+                building_id = rows[0][0]
+
+            # Insert rooms
+            cur.execute("SELECT * FROM rooms WHERE building_id = '" + str(building_id) + "' AND name = '" + room + "';")
+            rows = cur.fetchall()
+            if len(rows) == 0:
+                cur.execute("INSERT INTO rooms VALUES(NULL, '" + room + "', " + str(building_id) + ");")
+                room_id = cur.lastrowid
+            else:
+                room_id = rows[0][0]
+
+            days = days.replace(" ", "")
+            days_list = list(days)
+            days_string = json.dumps(days_list)
+
+            time_start_struct = time.strptime(start_time, TIME_IN_FORMAT)
+            time_end_struct = time.strptime(end_time, TIME_IN_FORMAT)
+
+            time_start_db = time.strftime(TIME_OUT_FORMAT, time_start_struct)
+            time_end_db = time.strftime(TIME_OUT_FORMAT, time_end_struct)
+
+            cur.execute("INSERT INTO times VALUES(NULL, '" + str(room_id) + "', '" + str(
+                building_id) + "', '" + time_start_db + "', '" + time_end_db + "', '" + days_string + "');")
+    con.close()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
