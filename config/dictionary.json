@@ -1,11 +1,12 @@
 {
-  "messages": {
-    "en": {
+  "en": {
+    "phrases": {
       "NO_ROOMS": "Sorry, there aren't any rooms available in that building right now.",
       "HELP": "This service finds you a vacant room on Virginia Tech's campus.\n\nTry: \"get a room in TORG\"",
       "ONE_ROOM": "Hey! I found one room in %s:\n\n",
       "SEVERAL_ROOMS": "Hey! I found %d rooms in %s:\n\n",
       "SEVERAL_MORE_ROOMS": "Hey! Here are a few rooms in %s:\n\n",
+      "INVALID_MESSAGE": "Invalid message. Try 'get a room in TORG'",
       "PENGUIN_FACTS_WELCOME": "Congratulations! You have been signed up for Emperor Penguin Facts.\n\n",
       "PENGUIN_FACTS": [
         "Did you know emperor penguins stand up to 4ft tall?",

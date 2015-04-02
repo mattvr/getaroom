@@ -4,13 +4,15 @@ import math
 from datetime import datetime
 import httplib, urllib
 import logging as logger
+
 from rate_limit_service import  is_rate_limited
+from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST
+from getaroom import get_available_rooms
+from dictionary import get_phrase
+
 # External dependencies
 from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
-
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST
-from getaroom import get_available_rooms
 
 app = Flask(__name__)
 ban_lookup = json.loads(open(BLACKLIST).read())
@@ -62,7 +64,7 @@ def parse_response(response):
     if intent == 'getaroom':
         return parse_getaroom(response)
     elif intent == 'help':
-        return 'This service finds you a vacant room on Virginia Tech\'s campus.\n\nTry: "get a room in TORG"'
+        return get_phrase("HELP")
     elif intent == 'stop':
         return parse_joke(response)
     else:
@@ -78,16 +80,19 @@ def parse_getaroom(response):
 
                 rooms = get_available_rooms(building, datetime.now())
                 if len(rooms) == 0:
-                    return "Sorry, there aren't any rooms available in that building right now."
+                    return get_phrase("NO_ROOMS")
                 else:
                     building_name = rooms[0].building_name
                     string = ''
                     if len(rooms) == 1:
-                        string += 'Hey! I found one room in %s:\n\n' % (building_name,)
+                        phrase = get_phrase("ONE_ROOM")
+                        string += phrase % (building_name,)
                     elif len(rooms) <= 3:
-                        string += 'Hey! I found %d rooms in %s:\n\n' % (len(rooms), building_name)
+                        phrase = get_phrase("SEVERAL_ROOMS")
+                        string += phrase % (len(rooms), building_name)
                     else:
-                        string += 'Hey! Here are a few rooms in %s:\n\n' % (building_name,)
+                        phrase = get_phrase("SEVERAL_MORE_ROOMS")
+                        string += phrase % (building_name,)
 
                 iterations = min((3, len(rooms)))
                 for i, room in enumerate(rooms[:iterations]):
@@ -102,7 +107,7 @@ def parse_getaroom(response):
                 logger.info("SMS Response Generated - consumes %d SMS" % numTexts)
                 print("SMS Response Generated - consumes %d SMS" % numTexts)
                 return string
-    return "Invalid message. Try 'get a room in TORG'"
+    return get_phrase("INVALID_MESSAGE")
 
 def is_banned(number):
     bans = ban_lookup['bans']
@@ -111,17 +116,9 @@ def is_banned(number):
     return False
 
 def parse_joke(response):
-    string = 'Congratulations! You have been signed up for Emperor Penguin Facts.\n\n'
-    num = random.randint(0, 3)
-    if num is 0:
-        string += 'Did you know emperor penguins stand up to 4ft tall?'
-    elif num is 1:
-        string += 'Male emperor penguins are the primary caregivers for newborn offspring.'
-    elif num is 2:
-        string += 'Emperor penguins are featured on more than 30 countries stamps.'
-    elif num is 3:
-        string += 'Emperor penguins fast longer than any other bird, going 115 days without eating.'
-
+    string = get_phrase("PENGUIN_FACTS_WELCOME")
+    facts = get_phrase("PENGUIN_FACTS")
+    string += random.choice(facts)
     return string
 
 def send_sms(number, message):
