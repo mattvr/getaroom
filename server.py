@@ -5,7 +5,6 @@ import httplib, urllib
 import logging as logger
 
 # External dependencies
-import Queue
 from flask import Flask, request
 import sqlite3
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
@@ -35,7 +34,7 @@ def getaroom():
     wit_response = send_to_wit(body)
     sms_response = parse_response(json.loads(wit_response))
     if DEBUG_SMS:
-        print("SMS DEBUG: %s - from - %s" % (sms_response, sender_no))
+        print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (sms_response, sender_no))
     else:
         send_sms(sender_no, sms_response)
     print wit_response
@@ -56,7 +55,7 @@ def parse_response(response):
     if intent == 'getaroom':
         return parse_getaroom(response)
     elif intent == 'help':
-        return 'This service finds you a vacant room on Virginia Tech\'s campus.\nTry: "get a room in TORG"'
+        return 'This service finds you a vacant room on Virginia Tech\'s campus.\n\nTry: "get a room in TORG"'
     elif intent == 'stop':
         return parse_joke(response)
     else:
@@ -70,6 +69,8 @@ def parse_getaroom(response):
             if 'building' in entity and len(entity['building']) > 0:
                 building = entity['building'][0]['value']
 
+                numTexts = 0;
+
                 rooms = get_available_rooms(building, datetime.now())
                 if len(rooms) == 0:
                     return "Sorry, there aren't any rooms available in that building right now."
@@ -81,17 +82,20 @@ def parse_getaroom(response):
                     elif len(rooms) <= 3:
                         string += 'Hey! I found %d rooms in %s:\n\n' % (len(rooms), building_name)
                     else:
-                        string += 'Hey! Here are the three available rooms in %s:\n\n' % (building_name,)
+                        string += 'Hey! Here are a few rooms in %s:\n\n' % (building_name,)
 
                 iterations = min((3, len(rooms)))
                 for i, room in enumerate(rooms[:iterations]):
                     if not room.end_availability:
-                        string += '- %s %s (open rest of day)' % (room.building_code, room.number)
+                        string += '- %s %s (rest of day)' % (room.building_code, room.number)
                     else:
-                        string += '- %s %s (open until %s)' % (room.building_code, room.number, room.end_availability)
+                        string += '- %s %s (until %s)' % (room.building_code, room.number, room.end_availability)
                     if i is not iterations - 1:
                         string += '\n'
 
+                numTexts = 1 + (len(string) / 160) # this is the number of texts sent
+                logger.info("SMS Response Generated - consumes %d SMS" % numTexts)
+                print("SMS Response Generated - consumes %d SMS" % numTexts)
                 return string
 
     return "Invalid message. Try 'get a room in TORG'"
@@ -117,7 +121,6 @@ def parse_joke(response):
         string += 'Penguins. Penguins. Pengiuns. Pegnuins. PENGUISN. PENGEUNINS. PENGSUINSG OEPJG SODFKSDFO FSDFDSFSS'
 
     return string
-
 
 def check_rate_limited(number):
     con = sqlite3.connect(SQLITE_DATABASE)
