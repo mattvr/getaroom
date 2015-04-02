@@ -58,3 +58,5 @@ target/
 
 # Specific to us
 config.py
+
+log/*.log
