@@ -6,7 +6,7 @@ import httplib, urllib
 import logging as logger
 
 from rate_limit_service import is_rate_limited, is_banned
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST
+from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST, SMS_LARGE_PENALTY
 from getaroom import get_available_rooms
 from dictionary import get_phrase
 
@@ -34,9 +34,16 @@ def getaroom():
     # TODO: account for concatenated & unicode messages
     wit_response = send_to_wit(body)
     sms_response = parse_response(json.loads(wit_response))
-    ret_val = ""
 
-    if is_rate_limited(sender_no, num_texts=1.0):
+    num_texts = math.floor(1 + (len(sms_response) / 160)) # this is the number of texts sent
+    logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
+    print("SMS Response Generated - consumes %d SMS" % num_texts)
+
+    sms_penalty = 1.0
+    if SMS_LARGE_PENALTY:
+        sms_penalty = float(num_texts)
+
+    if is_rate_limited(sender_no, num_texts=sms_penalty):
         logger.warn("Phone number is rate limited (%s)" % sender_no)
         return "Phone number is rate limited. Try again later."
     else:
@@ -46,8 +53,7 @@ def getaroom():
             send_sms(sender_no, sms_response)
         print wit_response
 
-        ret_val = sms_response
-    return ret_val
+        return sms_response
 
 def send_to_wit(message):
     conn = httplib.HTTPSConnection('api.wit.ai')
@@ -102,9 +108,6 @@ def parse_getaroom(response):
                     if i is not iterations - 1:
                         string += '\n'
 
-                numTexts = math.floor(1 + (len(string) / 160)) # this is the number of texts sent
-                logger.info("SMS Response Generated - consumes %d SMS" % numTexts)
-                print("SMS Response Generated - consumes %d SMS" % numTexts)
                 return string
     return get_phrase("INVALID_MESSAGE")
 

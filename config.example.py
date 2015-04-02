@@ -17,8 +17,8 @@ BLACKLIST = 'config/blacklist.json'
 # Print texts to console instead of sending SMS
 DEBUG_SMS = True
 
-# 3 texts a day
-SMS_PER_PERIOD = 3
+# 10 texts a day
+SMS_PER_PERIOD = 10
 SMS_PERIOD     = 86400
 
 # Count if a generic text consumes more than one message (long building name)
