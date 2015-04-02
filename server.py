@@ -5,7 +5,7 @@ from datetime import datetime
 import httplib, urllib
 import logging as logger
 
-from rate_limit_service import  is_rate_limited
+from rate_limit_service import is_rate_limited, is_banned
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST
 from getaroom import get_available_rooms
 from dictionary import get_phrase
@@ -15,7 +15,6 @@ from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
 
 app = Flask(__name__)
-ban_lookup = json.loads(open(BLACKLIST).read())
 
 logger.basicConfig(filename=LOGGER_SERVER,level=logger.DEBUG)
 @app.route('/getaroom', methods=['GET', 'POST'])
@@ -109,11 +108,6 @@ def parse_getaroom(response):
                 return string
     return get_phrase("INVALID_MESSAGE")
 
-def is_banned(number):
-    bans = ban_lookup['bans']
-    if number in bans:
-        return True
-    return False
 
 def parse_joke(response):
     string = get_phrase("PENGUIN_FACTS_WELCOME")

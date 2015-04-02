@@ -2,10 +2,12 @@ from datetime import datetime
 import time
 import logging as logger
 import sqlite3
+import json
 
-from config import SMS_PER_PERIOD, SMS_PERIOD, SQLITE_DATABASE
+from config import SMS_PER_PERIOD, SMS_PERIOD, SQLITE_DATABASE, BLACKLIST
 
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+ban_lookup = json.loads(open(BLACKLIST).read())
 
 def is_rate_limited(phone_number, num_texts = 1.0):
     con = sqlite3.connect(SQLITE_DATABASE)
@@ -54,3 +56,9 @@ def is_rate_limited(phone_number, num_texts = 1.0):
     cur.close()
     con.close()
     return ret_val
+
+def is_banned(number):
+    bans = ban_lookup['bans']
+    if number in bans:
+        return True
+    return False
