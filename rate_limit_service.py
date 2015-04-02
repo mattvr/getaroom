@@ -7,7 +7,7 @@ from config import SMS_PER_PERIOD, SMS_PERIOD, SQLITE_DATABASE
 
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
-def is_rate_limited(phone_number):
+def is_rate_limited(phone_number, num_texts = 1.0):
     con = sqlite3.connect(SQLITE_DATABASE)
     cur = con.cursor()
 
@@ -40,14 +40,14 @@ def is_rate_limited(phone_number):
     cur.execute(q, (current_time, allowance, rate_log[0]))
 
     if allowance > rate:
-        allowance = rate;
+        allowance = rate
         q = "UPDATE rate_limit_logs SET allowance = ? WHERE id = ?"
         cur.execute(q, (allowance, rate_log[0]))
     if allowance < 1.0:
         ret_val = True
     else:
         ret_val = False
-        allowance -= 1.0
+        allowance -= num_texts
         q = "UPDATE rate_limit_logs SET allowance = ? WHERE id = ?"
         cur.execute(q, (allowance, rate_log[0]))
     con.commit()

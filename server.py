@@ -35,7 +35,7 @@ def getaroom():
     sms_response = parse_response(json.loads(wit_response))
     ret_val = ""
 
-    if is_rate_limited(sender_no):
+    if is_rate_limited(sender_no, num_texts=1.0):
         logger.warn("Phone number is rate limited (%s)" % sender_no)
         return "Phone number is rate limited. Try again later."
     else:
