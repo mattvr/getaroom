@@ -114,8 +114,8 @@ def parse_getaroom(response):
 
 def parse_joke(response):
     string = get_phrase("PENGUIN_FACTS_WELCOME")
-    facts = get_phrase("PENGUIN_FACTS")
-    string += random.choice(facts)
+    fact = get_phrase("PENGUIN_FACTS")
+    string += fact
     return string
 
 def send_sms(number, message):
