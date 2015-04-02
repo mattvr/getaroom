@@ -4,10 +4,9 @@ import math
 from datetime import datetime
 import httplib, urllib
 import logging as logger
-from rate_limit_service import  is_rate_limited, update_rate
+from rate_limit_service import  is_rate_limited
 # External dependencies
 from flask import Flask, request
-import sqlite3
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
 
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST
@@ -36,9 +35,9 @@ def getaroom():
     sms_response = parse_response(json.loads(wit_response))
     ret_val = ""
 
-    update_rate(sender_no)
     if is_rate_limited(sender_no):
-        print("Number rate limited.")
+        logger.warn("Phone number is rate limited (%s)" % sender_no)
+        return "Phone number is rate limited. Try again later."
     else:
         if DEBUG_SMS:
             print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (sms_response, sender_no))
