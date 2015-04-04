@@ -6,7 +6,7 @@ import httplib, urllib
 import logging as logger
 
 from rate_limit_service import is_rate_limited, is_banned
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST, SMS_LARGE_PENALTY, LOG_MESSAGES
+from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, DEBUG_SMS, SMS_LARGE_PENALTY, LOG_MESSAGES
 from getaroom import get_available_rooms
 from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
@@ -94,14 +94,15 @@ def parse_getaroom(response):
                 else:
                     building_name = rooms[0].building_name
                     string = ''
+                    salutation = get_phrase("INTRO")
                     if len(rooms) == 1:
-                        phrase = get_phrase("ONE_ROOM")
+                        phrase = "%s %s" % (salutation, get_phrase("ONE_ROOM"))
                         string += phrase % (building_name,)
                     elif len(rooms) <= 3:
-                        phrase = get_phrase("SEVERAL_ROOMS")
+                        phrase = "%s %s" % (salutation, get_phrase("SEVERAL_ROOMS"))
                         string += phrase % (len(rooms), building_name)
                     else:
-                        phrase = get_phrase("SEVERAL_MORE_ROOMS")
+                        phrase = "%s %s" % (salutation, get_phrase("SEVERAL_MORE_ROOMS"))
                         string += phrase % (building_name,)
 
                 iterations = min((3, len(rooms)))
