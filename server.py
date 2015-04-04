@@ -6,9 +6,10 @@ import httplib, urllib
 import logging as logger
 
 from rate_limit_service import is_rate_limited, is_banned
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST, SMS_LARGE_PENALTY
+from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, SQLITE_DATABASE, DEBUG_SMS, BLACKLIST, SMS_LARGE_PENALTY, LOG_MESSAGES
 from getaroom import get_available_rooms
 from dictionary import get_phrase
+from message_logger import log_message, MessageDirection
 
 # External dependencies
 from flask import Flask, request
@@ -22,12 +23,16 @@ def getaroom():
     sender_no = request.values.get('msisdn')
     body = request.values.get('text')
 
+    if sender_no is None or body is None:
+        logger.error("RECEIVED INVALID MESSAGE.")
+        return 'Invalid message.'
+
+    if LOG_MESSAGES:
+        log_message(sender_no, body, MessageDirection.INBOUND)
+
     if is_banned(sender_no):
         logger.warn("Number banned! - %s - %s", (body, sender_no))
         return "Number banned"
-
-    if sender_no is None or body is None:
-        return 'Invalid message.'
 
     logger.info("Received request - %s - %s" % (body, sender_no))
 
@@ -133,6 +138,9 @@ def send_sms(number, message):
     if not response:
         logger.error("[NEXMO] Failed to send response: %s [to] %s" % (message, number))
         print "Failed to send response"
+
+    if LOG_MESSAGES:
+        log_message(number, message, MessageDirection.OUTBOUND)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
