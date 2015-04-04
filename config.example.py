@@ -26,3 +26,7 @@ SMS_LARGE_PENALTY = False
 
 DICTIONARY_FILE = "config/dictionary.json"
 DEFAULT_LANGUAGE = "en"
+
+# Maintain a log of all inbound and outbound messages in the database
+# Also logs phone numbers
+LOG_MESSAGES = True
