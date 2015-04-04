@@ -60,3 +60,5 @@ target/
 config.py
 
 log/*.log
+
+data/data.db
