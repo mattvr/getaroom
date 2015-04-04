@@ -4,14 +4,15 @@ from utils import enum
 
 MessageDirection = enum('INBOUND', 'OUTBOUND')
 
+get_client_from_number_query = "SELECT * FROM clients WHERE phone_number = ?;"
+
 # 0 = incoming
 # 1 = outgoing
 def log_message(phone_number, body, direction):
     con = sqlite3.connect(SQLITE_DATABASE)
     cur = con.cursor()
 
-    q = "SELECT * FROM clients WHERE phone_number = ?;"
-    cur.execute(q, (phone_number,))
+    cur.execute(get_client_from_number_query, (phone_number,))
     client = cur.fetchone()
 
     if client is None:
@@ -28,9 +29,22 @@ def log_message(phone_number, body, direction):
     cur.close()
     cur.close()
 
-
-
-
-
 def get_count(phone_number):
-    pass
+    con = sqlite3.connect(SQLITE_DATABASE)
+    cur = con.cursor()
+
+    result = 0
+
+    cur.execute(get_client_from_number_query, (phone_number, ))
+    client = cur.fetchone()
+    if client is not None:
+        client_id = client[0]
+        q = "SELECT count(*) FROM messages WHERE client_id = ?;"
+        cur.execute(q, (client_id, ))
+        num = cur.fetchone()
+        result = num[0]
+
+    cur.close()
+    con.close()
+
+    return result
