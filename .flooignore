@@ -6,3 +6,4 @@ vendor
 data
 data.db
 *.log
+data/data_testing.db

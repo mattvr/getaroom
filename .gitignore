@@ -62,3 +62,4 @@ config.py
 log/*.log
 
 data/data.db
+data/data_testing.db

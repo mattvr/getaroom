@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 # 12:20PM
 # 1:10PM
 # # LITRV 1670
-pattern = "(?P<days>(?:(?:M|T|W|R|F)\s?)+)\s*(?P<start_time>\d\d?:\d\d(?:AM|PM))\s*(?P<end_time>\d\d?:\d\d(?:AM|PM))\s*(?:(?P<building>(?:\w)+)) (?P<room>(?:\w| )*)"
+pattern = "(?P<days>(?:(?:M|T|W|R|F)\s?)+)\s*(?P<start_time>\d\d?:\d\d(?:AM|PM))\s*(?P<end_time>\d\d?:\d\d(?:AM|PM))\s*(?P<full_room>(?:(?P<building>(?:\w)+)) (?P<room>(?:\w| )*))"
 regex = re.compile(pattern)
 
 day_lookup = {
@@ -215,8 +215,45 @@ def populate(source_file):
     rows = soup.table.tbody.find_all('tr')
     rows = rows[1:]  # ignore title row
 
+    # Emptying db
+    with con:
+        cur = con.cursor()
+        cur = con.cursor()
+        sql1 = "DELETE FROM buildings;"
+        sql2 = "DELETE FROM times;"
+        sql3 = "DELETE FROM rooms;"
+        sql4 = "DELETE FROM sqlite_sequence WHERE name = ?;"
+        try:
+            cur.execute(sql1)
+            cur.execute(sql2)
+            cur.execute(sql3)
+            cur.execute(sql4, 'buildings')
+            cur.execute(sql4, 'rooms')
+            cur.execute(sql4, 'times')
+        except:
+            pass
+        con.commit()
+
     print "Writing database, this could take a while..."
     logger.info("[POP] Writing DB...")
+    
+    # Populate buildings
+    with con:
+        cur = con.cursor()
+        buildings_dict = building_lookup['buildings']
+        for building_code in buildings_dict.iterkeys():
+            building_name = buildings_dict[building_code]
+
+            query = "INSERT INTO buildings VALUES(NULL, ?, ?);"
+            try:
+                cur.execute(query, (building_code, building_name))
+                print "Inserting building: %s - %s" % (building_name, building_code)
+            except:
+                print "Building already exists in DB: %s - %s" % (building_name, building_code)
+
+            building_id = cur.lastrowid
+    con.commit()
+
     for i, row in enumerate(rows):
         text = row.get_text().encode('ascii', 'ignore')
 
@@ -229,8 +266,9 @@ def populate(source_file):
 
         # Get capture groups
         days = result.group("days")
-        building = result.group("building")
-        room = result.group("room")
+        # building = result.group("building")
+        # room = result.group("room")
+        full_room = result.group("full_room")
         start_time = result.group("start_time")
         end_time = result.group("end_time")
 
@@ -239,21 +277,29 @@ def populate(source_file):
         with con:
             cur = con.cursor()
 
-            # Insert buildings
+            # check all bldgs first for match
+            cmd = "SELECT * FROM buildings"
+            cur.execute(cmd)
+            buildings = cur.fetchall()
+            building = ''
+            room = ''
+            
+            for b in buildings:
+                if full_room.startswith(b[1]) and len(b[1]) > len(building):
+                    building = b[1]
+                    room = full_room[len(b[1]):]
+
+            if building is '':
+                print 'Error: didn\'t match building %s' % (full_room)
+            if room is '':
+                print "Error: no room on %s" % (full_room)
+
+
+            # Get building id
             cmd = "SELECT * FROM buildings WHERE code = ?"
             cur.execute(cmd, (building,))
-            rows = cur.fetchall()
-            if len(rows) == 0:
-                building_name = ''
-                try:
-                    building_name = building_lookup['buildings'][building]
-                except:
-                    print "Building not found in name lookup: %s" % building
-                    logger.error("[POP] Building name not found - %s" % building)
-                cur.execute("INSERT INTO buildings VALUES(NULL, '" + building + "', '" + building_name + "');")
-                building_id = cur.lastrowid
-            else:
-                building_id = rows[0][0]
+            building_obj = cur.fetchone()
+            building_id = building_obj[0]
 
             # Insert rooms
             cur.execute("SELECT * FROM rooms WHERE building_id = '" + str(building_id) + "' AND name = '" + room + "';")
