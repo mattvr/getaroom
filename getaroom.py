@@ -192,9 +192,16 @@ def get_available_rooms(building_str, in_class_time):
             if room_time is not None:
                 time_as_str = time.strftime(TIME_IN_FORMAT, room_time)
                 result_class_room.end_availability = time_as_str
+
+                d1 = datetime(2000, 1, 1, room_time.tm_hour, room_time.tm_min, room_time.tm_sec)
+                d2 = datetime(2000, 1, 1, in_class_time.hour, in_class_time.minute, in_class_time.second)
+
+                timediff = (d1 - d2).seconds / 1800 # half hours
+                result_class_room.weight = min(timediff, 10) # cap weight at 10
+
             else:
                 result_class_room.end_availability = False
-                result_class_room.weight += 20
+                result_class_room.weight += 11
             return_rooms.append(result_class_room)
     cur.close()
 
@@ -249,8 +256,6 @@ def populate(source_file):
                 print "Inserting building: %s - %s" % (building_name, building_code)
             except:
                 print "Building already exists in DB: %s - %s" % (building_name, building_code)
-
-            building_id = cur.lastrowid
     con.commit()
 
     for i, row in enumerate(rows):
@@ -289,9 +294,9 @@ def populate(source_file):
                     room = full_room[len(b[1]):]
 
             if building is '':
-                print 'Error: didn\'t match building %s' % (full_room)
+                print 'Error: didn\'t match building %s' % (full_room, )
             if room is '':
-                print "Error: no room on %s" % (full_room)
+                print "Error: no room on %s" % (full_room, )
 
 
             # Get building id

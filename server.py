@@ -1,9 +1,9 @@
-import random
 import json
 import math
 from datetime import datetime
 import httplib, urllib
 import logging as logger
+import dateutil.parser #pip install python-dateutil
 
 from rate_limit_service import is_rate_limited, is_banned
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, DEBUG_SMS, SMS_LARGE_PENALTY, LOG_MESSAGES
@@ -84,11 +84,16 @@ def parse_getaroom(response):
     if 'outcomes' in response and len(response['outcomes']) > 0:
         outcome = response['outcomes'][0]
         if 'entities' in outcome and len(outcome['entities']) > 0:
-            entity = outcome['entities']
-            if 'building' in entity and len(entity['building']) > 0:
-                building = entity['building'][0]['value']
+            entities = outcome['entities']
+            if 'building' in entities and len(entities['building']) > 0:
+                building = entities['building'][0]['value']
+                time = datetime.now()
 
-                rooms = get_available_rooms(building, datetime.now())
+                if 'datetime' in entities and len (entities['datetime']) > 0:
+                    time_str = entities['datetime'][0]['value']
+                    time = dateutil.parser.parse(time_str)
+
+                rooms = get_available_rooms(building, time)
                 if len(rooms) == 0:
                     return get_phrase("NO_ROOMS")
                 else:
