@@ -218,7 +218,6 @@ def populate(source_file):
     # Emptying db
     with con:
         cur = con.cursor()
-        cur = con.cursor()
         sql1 = "DELETE FROM buildings;"
         sql2 = "DELETE FROM times;"
         sql3 = "DELETE FROM rooms;"
