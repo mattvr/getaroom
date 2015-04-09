@@ -9,7 +9,7 @@ import logging as logger
 
 from config import SQLITE_DATABASE, BUIlDING_NAME_LOOKUP, LOGGER_SERVICE
 
-logger.basicConfig(filename=LOGGER_SERVICE,level=logger.DEBUG)
+# logger.basicConfig(filename=LOGGER_SERVICE,level=logger.DEBUG)
 
 # External dependencies
 from bs4 import BeautifulSoup

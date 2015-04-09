@@ -3,7 +3,6 @@ import math
 from datetime import datetime
 import httplib, urllib
 import logging as logger
-import dateutil.parser #pip install python-dateutil
 
 from rate_limit_service import is_rate_limited, is_banned
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOGGER_SERVER, DEBUG_SMS, SMS_LARGE_PENALTY, LOG_MESSAGES
@@ -12,6 +11,7 @@ from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
 
 # External dependencies
+import dateutil.parser #pip install python-dateutil
 from flask import Flask, request
 from nexmomessage import NexmoMessage # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
 
