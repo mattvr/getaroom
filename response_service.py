@@ -11,7 +11,7 @@ from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHON
 from getaroom import get_available_rooms
 from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
-from rate_limit_service import is_rate_limited
+from rate_limit_service import is_rate_limited, rate_warned
 
 
 
@@ -32,18 +32,22 @@ def parse_sms_main(body, sender_no):
         sms_penalty = float(num_texts)
 
     if is_rate_limited(sender_no, num_texts=sms_penalty):
+        if not sender_no in rate_warned:
+            rate_warned[sender_no] = True
+            send_sms(sender_no, "Your phone number has been rate limited. Please try again later.")
+
         logger.warn("Phone number is rate limited (%s)" % sender_no)
         return "Phone number is rate limited. Try again later."
+
+    if sender_no in rate_warned:
+        del rate_warned[sender_no]
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
     print("SMS Response Generated for (%s) - consumes %d SMS" % (sender_no, num_texts))
 
-    if DEBUG_SMS:
-        print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (sms_response, sender_no))
-    else:
-        send_sms(sender_no, sms_response)
-    print wit_response
+    send_sms(sender_no, sms_response)
 
+    print wit_response
     return sms_response
 
 
@@ -110,6 +114,10 @@ def parse_joke():
 
 
 def send_sms(number, message):
+    if DEBUG_SMS:
+        print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (message, number))
+        return
+
     msg = {
         'reqtype': 'json',
         'api_key': NEXMO_API_KEY,

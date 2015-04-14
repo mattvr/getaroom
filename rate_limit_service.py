@@ -9,6 +9,7 @@ from config import SMS_PER_PERIOD, SMS_PERIOD, SQLITE_DATABASE, BLACKLIST
 
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
+rate_warned = {}
 
 def is_rate_limited(phone_number, num_texts=1.0):
     con = sqlite3.connect(SQLITE_DATABASE)
