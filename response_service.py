@@ -11,7 +11,7 @@ from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHON
 from getaroom import get_available_rooms
 from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
-from rate_limit_service import is_rate_limited, rate_warned, get_time_remaining, get_rate_limit_ending
+from rate_limit_service import is_rate_limited, rate_warned, get_time_remaining, get_rate_limit_ending, is_admin
 
 # External dependencies
 import dateutil.parser  # pip install python-dateutil
@@ -25,23 +25,25 @@ def parse_sms_main(body, sender_no):
     num_texts = math.floor(1 + (len(sms_response) / 160))  # this is the number of texts sent
 
     # If SMS_LARGE_PENALTY, an sms response overflows 160 characters and becomes 2 messages, user is still charged
-    sms_penalty = 1.0
-    if SMS_LARGE_PENALTY:
-        sms_penalty = float(num_texts)
 
-    if is_rate_limited(sender_no, num_texts=sms_penalty):
-        end_time = get_rate_limit_ending(sender_no, 1)
-        str_end = end_time.strftime("%I:%M %p").lstrip('0')
+    if not is_admin(sender_no):
+        sms_penalty = 1.0
+        if SMS_LARGE_PENALTY:
+            sms_penalty = float(num_texts)
 
-        if RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
-            rate_warned[sender_no] = True
-            send_sms(sender_no, (get_phrase("RATE_LIMITED") % str_end))
+        if is_rate_limited(sender_no, num_texts=sms_penalty):
+            end_time = get_rate_limit_ending(sender_no, 1)
+            str_end = end_time.strftime("%I:%M %p").lstrip('0')
 
-        print("Phone number is rate limited (%s) until %s" % (sender_no, str_end))
-        return "Phone number is rate limited. Try again later."
+            if RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
+                rate_warned[sender_no] = True
+                send_sms(sender_no, (get_phrase("RATE_LIMITED") % str_end))
 
-    if RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
-        del rate_warned[sender_no]
+            print("Phone number is rate limited (%s) until %s" % (sender_no, str_end))
+            return "Phone number is rate limited. Try again later."
+
+        if RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
+            del rate_warned[sender_no]
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
     print("SMS Response Generated for (%s) - consumes %d SMS" % (sender_no, num_texts))

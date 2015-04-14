@@ -4,7 +4,7 @@ import logging as logger
 import sqlite3
 import json
 
-from config import SMS_PER_PERIOD, SMS_PERIOD, SQLITE_DATABASE, BLACKLIST
+from config import SMS_PER_PERIOD, SMS_PERIOD, SQLITE_DATABASE, BLACKLIST, ADMIN_LIST
 
 
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -80,7 +80,12 @@ def get_rate_limit_ending(phone_num, allowance = 1):
 
     return dt_end_limit
 
-
+def is_admin(number):
+    admin_lookup = json.loads(open(ADMIN_LIST).read())
+    admins = admin_lookup['admins']
+    if number in admins:
+        return True
+    return False
 
 def get_time_remaining(phone_num, allowance = 1):
     end_time = get_rate_limit_ending(phone_num, allowance)
