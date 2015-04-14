@@ -15,8 +15,6 @@ from rate_limit_service import is_rate_limited
 
 
 
-
-
 # External dependencies
 import dateutil.parser  # pip install python-dateutil
 from nexmomessage import NexmoMessage  # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
@@ -27,9 +25,8 @@ def parse_sms_main(body, sender_no):
     sms_response = parse_response(json.loads(wit_response))
 
     num_texts = math.floor(1 + (len(sms_response) / 160))  # this is the number of texts sent
-    logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
-    print("SMS Response Generated - consumes %d SMS" % num_texts)
 
+    # If SMS_LARGE_PENALTY, an sms response overflows 160 characters and becomes 2 messages, user is still charged
     sms_penalty = 1.0
     if SMS_LARGE_PENALTY:
         sms_penalty = float(num_texts)
@@ -37,14 +34,17 @@ def parse_sms_main(body, sender_no):
     if is_rate_limited(sender_no, num_texts=sms_penalty):
         logger.warn("Phone number is rate limited (%s)" % sender_no)
         return "Phone number is rate limited. Try again later."
-    else:
-        if DEBUG_SMS:
-            print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (sms_response, sender_no))
-        else:
-            send_sms(sender_no, sms_response)
-        print wit_response
 
-        return sms_response
+    logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
+    print("SMS Response Generated for (%s) - consumes %d SMS" % (sender_no, num_texts))
+
+    if DEBUG_SMS:
+        print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (sms_response, sender_no))
+    else:
+        send_sms(sender_no, sms_response)
+    print wit_response
+
+    return sms_response
 
 
 def parse_response(response):
