@@ -34,7 +34,7 @@ def parse_sms_main(body, sender_no):
     if is_rate_limited(sender_no, num_texts=sms_penalty):
         if RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
             rate_warned[sender_no] = True
-            send_sms(sender_no, "Your phone number has been rate limited. Please try again later.")
+            send_sms(sender_no, get_phrase("RATE_LIMITED"))
 
         logger.warn("Phone number is rate limited (%s)" % sender_no)
         return "Phone number is rate limited. Try again later."

@@ -24,6 +24,9 @@ SMS_PERIOD     = 86400
 # Count if a generic text consumes more than one message (long building name)
 SMS_LARGE_PENALTY = False
 
+# Send warning message when a user has become rate limited. No penalty
+RATE_LIMIT_WARNING_MESSAGE = True
+
 DICTIONARY_FILE = "config/dictionary.json"
 DEFAULT_LANGUAGE = "en"
 
