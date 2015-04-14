@@ -63,3 +63,6 @@ log/*.log
 
 data/data.db
 data/data_testing.db
+
+config/admins.json
+config/blacklist.json
