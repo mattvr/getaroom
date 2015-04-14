@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import logging as logger
 import sqlite3
@@ -59,6 +59,39 @@ def is_rate_limited(phone_number, num_texts=1.0):
     con.close()
     return ret_val
 
+def get_rate_limit_ending(phone_num, allowance = 1):
+    con = sqlite3.connect(SQLITE_DATABASE)
+    cur = con.cursor()
+    q = "SELECT * FROM rate_limit_logs WHERE phone_number = ?"
+    cur.execute(q, (phone_num, ))
+
+    result = cur.fetchone()
+    if result is None:
+        return 0
+    time_left = allowance - result[3]
+    if time_left > allowance:
+        return 0
+
+    time_left *= (SMS_PERIOD / SMS_PER_PERIOD)
+    m, s = divmod(time_left, 60)
+    h, m = divmod(m, 60)
+
+    dt_end_limit = datetime.now() + timedelta(hours=h, minutes=m, seconds=s)
+
+    return dt_end_limit
+
+
+
+def get_time_remaining(phone_num, allowance = 1):
+    end_time = get_rate_limit_ending(phone_num, allowance)
+    time_remaining = end_time - datetime.now()
+    s = time_remaining.seconds
+
+    hours = s // 3600
+    s -= hours * 3600
+    minutes = s // 60
+    seconds = s - (minutes * 60)
+    print '%s:%s:%s' % (hours, minutes, seconds)
 
 def is_banned(number):
     ban_lookup = json.loads(open(BLACKLIST).read())

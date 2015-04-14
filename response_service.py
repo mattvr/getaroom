@@ -11,9 +11,7 @@ from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHON
 from getaroom import get_available_rooms
 from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
-from rate_limit_service import is_rate_limited, rate_warned
-
-
+from rate_limit_service import is_rate_limited, rate_warned, get_time_remaining, get_rate_limit_ending
 
 # External dependencies
 import dateutil.parser  # pip install python-dateutil
@@ -32,11 +30,14 @@ def parse_sms_main(body, sender_no):
         sms_penalty = float(num_texts)
 
     if is_rate_limited(sender_no, num_texts=sms_penalty):
+        end_time = get_rate_limit_ending(sender_no, 1)
+        str_end = end_time.strftime("%I:%M %p").lstrip('0')
+
         if RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
             rate_warned[sender_no] = True
-            send_sms(sender_no, get_phrase("RATE_LIMITED"))
+            send_sms(sender_no, (get_phrase("RATE_LIMITED") % str_end))
 
-        logger.warn("Phone number is rate limited (%s)" % sender_no)
+        print("Phone number is rate limited (%s) until %s" % (sender_no, str_end))
         return "Phone number is rate limited. Try again later."
 
     if RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
