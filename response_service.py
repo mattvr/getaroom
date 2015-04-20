@@ -12,11 +12,32 @@ from getaroom import get_available_rooms
 from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
 from rate_limit_service import is_rate_limited, rate_warned, get_rate_limit_ending, is_admin
-from utils import bcolors
+from utils import bcolors, get_terminal_size
 
 # External dependencies
 import dateutil.parser  # pip install python-dateutil
 from nexmomessage import NexmoMessage  # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
+
+
+def print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_response, success):
+    t = time.strftime('%I:%m:%S %p %d/%m/%y')
+    (w, h) = get_terminal_size()
+    num = math.floor(w / 2)
+    if success:
+        print "=" * (int(num - 3)),
+        print(bcolors.OKGREEN + " OK " + bcolors.ENDC),
+        print "=" * (int(num - 3))
+    else:
+        print "=" * (int(num - 3)),
+        print(bcolors.FAIL + "FAIL" + bcolors.ENDC),
+        print "=" * (int(num - 3))
+    print(
+        "[%s] SMS Response :: " % (t, ) + bcolors.OKBLUE + " %s " % (sender_no, ) + bcolors.ENDC + " :: consumes %d" % (
+            num_texts, ))
+    if rateLimited: print("Phone number is rate limited (%s) until %s" % (sender_no, rateLimitEnd))
+    print("IN : %s" % body)
+    print("OUT: %s" % sms_response)
+    print "=" * w
 
 
 def parse_sms_main(body, sender_no):
@@ -55,20 +76,9 @@ def parse_sms_main(body, sender_no):
             del rate_warned[sender_no]
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
-    t = time.strftime('%I:%m:%S %p %d/%m/%y')
 
-    if success:
-        print("================ " + bcolors.OKGREEN + "OK" + bcolors.ENDC + " ================")
-    else:
-        print("=============== " + bcolors.FAIL + "FAIL" + bcolors.ENDC + " ===============")
+    print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_response, success)
 
-    print(
-        "[%s] SMS Response :: " % (t, ) + bcolors.OKBLUE + " %s " % (sender_no, ) + bcolors.ENDC + " :: consumes %d" % (
-        num_texts, ))
-    if rateLimited: print("Phone number is rate limited (%s) until %s" % (sender_no, rateLimitEnd))
-    print("IN : %s" % body)
-    print("OUT: %s" % sms_response)
-    print("====================================")
     logger.info(wit_response)
     send_sms(sender_no, sms_response)
 
