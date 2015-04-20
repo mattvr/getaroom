@@ -8,11 +8,11 @@ import time
 
 from config import DEBUG_SMS, SMS_LARGE_PENALTY, RATE_LIMIT_WARNING_MESSAGE
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOG_MESSAGES
-
 from getaroom import get_available_rooms
 from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
-from rate_limit_service import is_rate_limited, rate_warned, get_time_remaining, get_rate_limit_ending, is_admin
+from rate_limit_service import is_rate_limited, rate_warned, get_rate_limit_ending, is_admin
+from utils import bcolors
 
 # External dependencies
 import dateutil.parser  # pip install python-dateutil
@@ -22,6 +22,11 @@ from nexmomessage import NexmoMessage  # pip install -e git+https://github.com/m
 def parse_sms_main(body, sender_no):
     wit_response = send_to_wit(body)
     sms_response = parse_response(json.loads(wit_response))
+    success = True
+    if isinstance(sms_response, tuple):
+        success = sms_response[0]
+        sms_response = sms_response[1]
+
 
     num_texts = math.floor(1 + (len(sms_response) / 160))  # this is the number of texts sent
 
@@ -51,12 +56,19 @@ def parse_sms_main(body, sender_no):
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
     t = time.strftime('%I:%m:%S %p %d/%m/%y')
-    print("============================")
-    print("[%s] SMS Response :: %s :: consumes %d" % (t, sender_no, num_texts))
+
+    if success:
+        print("================ " + bcolors.OKGREEN + "OK" + bcolors.ENDC + " ================")
+    else:
+        print("=============== " + bcolors.FAIL + "FAIL" + bcolors.ENDC + " ===============")
+
+    print(
+        "[%s] SMS Response :: " % (t, ) + bcolors.OKBLUE + " %s " % (sender_no, ) + bcolors.ENDC + " :: consumes %d" % (
+        num_texts, ))
     if rateLimited: print("Phone number is rate limited (%s) until %s" % (sender_no, rateLimitEnd))
-    print("IN: %s" % body)
+    print("IN : %s" % body)
     print("OUT: %s" % sms_response)
-    print("============================")
+    print("====================================")
     logger.info(wit_response)
     send_sms(sender_no, sms_response)
 
@@ -68,7 +80,7 @@ def parse_response(response):
     if intent == 'getaroom':
         return parse_getaroom(response)
     elif intent == 'help':
-        return get_phrase("HELP")
+        return True, get_phrase("HELP")
     elif intent == 'stop':
         return parse_joke()
     else:
@@ -90,7 +102,7 @@ def parse_getaroom(response):
 
                 rooms = get_available_rooms(building, time)
                 if len(rooms) == 0:
-                    return get_phrase("NO_ROOMS")
+                    return False, get_phrase("NO_ROOMS")
                 else:
                     building_name = rooms[0].building_name
                     string = ''
@@ -114,15 +126,15 @@ def parse_getaroom(response):
                     if i is not iterations - 1:
                         string += '\n'
 
-                return string
-    return get_phrase("INVALID_MESSAGE")
+                return True, string
+    return False, get_phrase("INVALID_MESSAGE")
 
 
 def parse_joke():
     string = get_phrase("PENGUIN_FACTS_WELCOME")
     fact = get_phrase("PENGUIN_FACTS")
     string += fact
-    return string
+    return True, string
 
 
 def send_sms(number, message):
