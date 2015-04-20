@@ -4,6 +4,7 @@ import urllib
 import logging as logger
 import json
 import math
+import time
 
 from config import DEBUG_SMS, SMS_LARGE_PENALTY, RATE_LIMIT_WARNING_MESSAGE
 from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOG_MESSAGES
@@ -26,6 +27,8 @@ def parse_sms_main(body, sender_no):
 
     # If SMS_LARGE_PENALTY, an sms response overflows 160 characters and becomes 2 messages, user is still charged
 
+    rateLimited = False
+    rateLimitEnd = None
     if not is_admin(sender_no):
         sms_penalty = 1.0
         if SMS_LARGE_PENALTY:
@@ -39,18 +42,22 @@ def parse_sms_main(body, sender_no):
                 rate_warned[sender_no] = True
                 send_sms(sender_no, (get_phrase("RATE_LIMITED") % str_end))
 
-            print("Phone number is rate limited (%s) until %s" % (sender_no, str_end))
+            rateLimited = True
+            rateLimitEnd = str_end
             return "Phone number is rate limited. Try again later."
 
         if RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
             del rate_warned[sender_no]
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
-    print("SMS Response Generated for (%s) - consumes %d SMS" % (sender_no, num_texts))
-
+    t = time.strftime('%I:%m:%S %p %d/%m/%y')
+    print("============================")
+    print("[%s] SMS Response :: %s :: consumes %d" % (t, sender_no, num_texts))
+    if rateLimited: print("Phone number is rate limited (%s) until %s" % (sender_no, rateLimitEnd))
+    print wit_response
+    print("============================")
     send_sms(sender_no, sms_response)
 
-    print wit_response
     return sms_response
 
 
