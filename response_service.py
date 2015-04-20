@@ -54,8 +54,10 @@ def parse_sms_main(body, sender_no):
     print("============================")
     print("[%s] SMS Response :: %s :: consumes %d" % (t, sender_no, num_texts))
     if rateLimited: print("Phone number is rate limited (%s) until %s" % (sender_no, rateLimitEnd))
-    print wit_response
+    print("IN: %s" % body)
+    print("OUT: %s" % sms_response)
     print("============================")
+    logger.info(wit_response)
     send_sms(sender_no, sms_response)
 
     return sms_response
