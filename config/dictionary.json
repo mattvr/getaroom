@@ -8,7 +8,7 @@
       "ONE_ROOM": "I found one room in %s:\n\n",
       "SEVERAL_ROOMS": "I found %d rooms in %s:\n\n",
       "SEVERAL_MORE_ROOMS": "Here are a few rooms in %s:\n\n",
-      "INVALID_MESSAGE": "Invalid message. Try 'get a room in TORG'",
+      "INVALID_MESSAGE": "Sorry, I don't recognize that building! Try 'get a room in TORG'",
       "PENGUIN_FACTS_WELCOME": "Congratulations! You have been signed up for Emperor Penguin Facts.\n\n",
       "PENGUIN_FACTS": [
         "Did you know emperor penguins stand up to 4ft tall?",
