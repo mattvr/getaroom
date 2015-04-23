@@ -193,6 +193,5 @@ def send_to_wit(message):
     return response.read()
 
 def parse_unicode(message):
-    if emoji.decode(message) is not None:
-        return True, emoji.emojize("!! :face_throwing_a_kiss: !!")
-    return False, "Invalid message"
+    return True, emoji.emojize("!! :face_throwing_a_kiss: !!")
+    # return False, "Invalid message"
