@@ -17,13 +17,13 @@ logger.basicConfig(filename=LOGGER_SERVER, level=logger.DEBUG)
 def getaroom():
     sender_no = request.values.get('msisdn')
     body = request.values.get('text')
-    type = request.values.get('type')
+    encoding = request.values.get('type')
 
-    allowed_types = ['text']
+    valid = True
 
-    if sender_no is None or body is None or (type is not None and type not in allowed_types ):
+    if sender_no is None or body is None:
         logger.error("RECEIVED INVALID MESSAGE.")
-        return 'Invalid message.'
+        valid = False
 
     if LOG_MESSAGES:
         log_message(sender_no, body, MessageDirection.INBOUND)
@@ -34,7 +34,10 @@ def getaroom():
 
     logger.info("Received request - %s - %s" % (body, sender_no))
 
-    return parse_sms_main(body, sender_no)
+    if not valid:
+
+        return "Invalid message"
+    return parse_sms_main(body, sender_no, encoding)
 
 
 if __name__ == "__main__":

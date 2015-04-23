@@ -17,7 +17,9 @@ from utils import bcolors, get_terminal_size
 # External dependencies
 import dateutil.parser  # pip install python-dateutil
 from nexmomessage import NexmoMessage  # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
+import emoji # pip install emoji --upgrade
 
+allowed_types = ['text']
 
 def print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_response, success):
     t = time.strftime('%I:%m:%S %p %d/%m/%y')
@@ -40,9 +42,17 @@ def print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_r
     print "=" * w
 
 
-def parse_sms_main(body, sender_no):
-    wit_response = send_to_wit(body)
-    sms_response = parse_response(json.loads(wit_response))
+def parse_sms_main(body, sender_no, encoding = u'text'):
+    wit_response = None
+
+    if encoding == u"unicode":
+        sms_response = parse_unicode(body)
+    else:
+        if encoding not in allowed_types:
+            print "Invalid message received"
+            return "Invalid message"
+        wit_response = send_to_wit(body)
+        sms_response = parse_response(json.loads(wit_response))
     success = True
     if isinstance(sms_response, tuple):
         success = sms_response[0]
@@ -79,7 +89,8 @@ def parse_sms_main(body, sender_no):
 
     print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_response, success)
 
-    logger.info(wit_response)
+    if wit_response is not None:
+        logger.info(wit_response)
     send_sms(sender_no, sms_response)
 
     return sms_response
@@ -147,7 +158,7 @@ def parse_joke():
     return True, string
 
 
-def send_sms(number, message):
+def send_sms(number, message, msgType = "text"):
     if DEBUG_SMS:
         print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (message, number))
         return
@@ -158,7 +169,8 @@ def send_sms(number, message):
         'api_secret': NEXMO_API_SECRET,
         'from': NEXMO_PHONE_NO,
         'to': number,
-        'text': message
+        'text': message,
+        'type': msgType
     }
     sms = NexmoMessage(msg)
     sms.set_text_info(msg['text'])
@@ -179,3 +191,8 @@ def send_to_wit(message):
     conn.request('GET', url, '', headers)
     response = conn.getresponse()
     return response.read()
+
+def parse_unicode(message):
+    if emoji.decode(message) is not None:
+        return True, emoji.emojize("!! :face_throwing_a_kiss: !!")
+    return False, "Invalid message"
