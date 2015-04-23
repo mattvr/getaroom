@@ -12,10 +12,10 @@ LOGGER_SERVER  = 'logs/server.log'
 LOGGER_SERVICE = 'logs/getaroom.log'
 
 # These numbers will be blocked
-BLACKLIST = 'config/blacklist.json'
+BLACKLIST = 'config/blacklist.default.json'
 
 # These numbers will never be rate limited
-ADMIN_LIST = 'config/admins.json'
+ADMIN_LIST = 'config/admins.default.json'
 
 # Print texts to console instead of sending SMS
 DEBUG_SMS = True
