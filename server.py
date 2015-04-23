@@ -19,7 +19,7 @@ def getaroom():
     body = request.values.get('text')
     type = request.values.get('type')
 
-    if sender_no is None or body is None or type is not 'text':
+    if sender_no is None or body is None or (type is not None and type is not 'text' ):
         logger.error("RECEIVED INVALID MESSAGE.")
         return 'Invalid message.'
 
