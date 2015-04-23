@@ -17,9 +17,9 @@ logger.basicConfig(filename=LOGGER_SERVER, level=logger.DEBUG)
 def getaroom():
     sender_no = request.values.get('msisdn')
     body = request.values.get('text')
-    unicode = request.values.get('unicode')
+    type = request.values.get('type')
 
-    if sender_no is None or body is None or unicode is not None:
+    if sender_no is None or body is None or type is not 'text':
         logger.error("RECEIVED INVALID MESSAGE.")
         return 'Invalid message.'
 
