@@ -1,10 +1,10 @@
 import json
 import random
-from config import DICTIONARY_FILE, DEFAULT_LANGUAGE
+import config
 
-dictionary = json.loads(open(DICTIONARY_FILE).read())
+dictionary = json.loads(open(config.DICTIONARY_FILE).read())
 
-def get_phrase(key, language=DEFAULT_LANGUAGE):
+def get_phrase(key, language=config.DEFAULT_LANGUAGE):
     try:
         dict_lang = dictionary[language]['phrases']
         val = dict_lang[key]
