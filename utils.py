@@ -1,5 +1,8 @@
 import os
-
+import shlex
+import struct
+import platform
+import subprocess
 
 def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
@@ -16,13 +19,6 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-
-
-import os
-import shlex
-import struct
-import platform
-import subprocess
 
 
 # https://gist.github.com/jtriley/1108174
@@ -103,7 +99,3 @@ def _get_terminal_size_linux():
         except:
             return None
     return int(cr[1]), int(cr[0])
-
-if __name__ == "__main__":
-    sizex, sizey = get_terminal_size()
-    print  'width =', sizex, 'height =', sizey

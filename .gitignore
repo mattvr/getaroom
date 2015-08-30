@@ -56,9 +56,6 @@ target/
 .iml
 .idea
 
-# Specific to us
-config.py
-
 log/*.log
 
 data/data.db
