@@ -64,3 +64,4 @@ data/data_testing.db
 config/admins.json
 config/blacklist.json
 .DS_Store
+setup.sh
