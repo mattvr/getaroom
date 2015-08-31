@@ -1,5 +1,5 @@
 import sqlite3
-from config import SQLITE_DATABASE
+import config
 from utils import enum
 
 MessageDirection = enum('INBOUND', 'OUTBOUND')
@@ -9,7 +9,7 @@ get_client_from_number_query = "SELECT * FROM clients WHERE phone_number = ?;"
 # 0 = incoming
 # 1 = outgoing
 def log_message(phone_number, body, direction):
-    con = sqlite3.connect(SQLITE_DATABASE)
+    con = sqlite3.connect(config.SQLITE_DATABASE)
     cur = con.cursor()
 
     cur.execute(get_client_from_number_query, (phone_number,))
@@ -30,7 +30,7 @@ def log_message(phone_number, body, direction):
     cur.close()
 
 def get_count(phone_number):
-    con = sqlite3.connect(SQLITE_DATABASE)
+    con = sqlite3.connect(config.SQLITE_DATABASE)
     cur = con.cursor()
 
     result = 0

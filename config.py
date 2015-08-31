@@ -1,10 +1,10 @@
 import os
 
-GAR_NEXMO_API_KEY    = os.environ.get('NEXMO_API_KEY', None)
-GAR_NEXMO_API_SECRET = os.environ.get('NEXMO_API_SECRET', None)
-GAR_NEXMO_PHONE_NO   = os.environ.get('NEXMO_API_PHONE_NO', None)
+GAR_NEXMO_API_KEY    = os.environ.get('GAR_NEXMO_API_KEY', None)
+GAR_NEXMO_API_SECRET = os.environ.get('GAR_NEXMO_API_SECRET', None)
+GAR_NEXMO_PHONE_NO   = os.environ.get('GAR_NEXMO_API_PHONE_NO', None)
 
-WIT_ACCESS_TOKEN = os.environ.get('GAR_WIT_ACCESS_TOKEN', None)
+WIT_ACCESS_TOKEN = os.environ.get('GAR_WIT_ACCESS_TOKEN')
 
 SQLITE_DATABASE      = 'data/data.db'
 BUIlDING_NAME_LOOKUP = 'data/buildings.json'

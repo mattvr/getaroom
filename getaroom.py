@@ -7,7 +7,7 @@ import sqlite3
 import json
 import logging as logger
 
-from config import SQLITE_DATABASE, BUIlDING_NAME_LOOKUP, LOGGER_SERVICE
+import config
 
 # logger.basicConfig(filename=LOGGER_SERVICE,level=logger.DEBUG)
 
@@ -124,7 +124,7 @@ def pub_populate(args):
 
 
 def get_available_rooms(building_str, in_class_time):
-    con = sqlite3.connect(SQLITE_DATABASE)
+    con = sqlite3.connect(config.SQLITE_DATABASE)
     cur = con.cursor()
 
     cmd = "SELECT * FROM buildings WHERE code = ?"
@@ -211,8 +211,8 @@ def get_available_rooms(building_str, in_class_time):
 
 # Writes a SQLite database from source_file html table
 def populate(source_file):
-    con = sqlite3.connect(SQLITE_DATABASE)
-    building_lookup = json.loads(open(BUIlDING_NAME_LOOKUP).read())
+    con = sqlite3.connect(config.SQLITE_DATABASE)
+    building_lookup = json.loads(open(config.BUIlDING_NAME_LOOKUP).read())
 
     logger.info("[POP] Loading beautifulsoup file")
     print "Loading %s..." % source_file,
