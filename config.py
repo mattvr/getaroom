@@ -1,10 +1,14 @@
 import os
 
-GAR_NEXMO_API_KEY    = os.environ.get('GAR_NEXMO_API_KEY', None)
-GAR_NEXMO_API_SECRET = os.environ.get('GAR_NEXMO_API_SECRET', None)
-GAR_NEXMO_PHONE_NO   = os.environ.get('GAR_NEXMO_API_PHONE_NO', None)
+NEXMO_API_KEY    = os.environ.get('GAR_NEXMO_API_KEY', None)
+NEXMO_API_SECRET = os.environ.get('GAR_NEXMO_API_SECRET', None)
+NEXMO_PHONE_NO   = os.environ.get('GAR_NEXMO_API_PHONE_NO', None)
 
 WIT_ACCESS_TOKEN = os.environ.get('GAR_WIT_ACCESS_TOKEN')
+
+ENV = os.environ.get('GAR_ENV')
+if ENV is None:
+    ENV = "DEV"
 
 SQLITE_DATABASE      = 'data/data.db'
 BUIlDING_NAME_LOOKUP = 'data/buildings.json'
@@ -20,7 +24,7 @@ BLACKLIST = 'config/blacklist.json'
 ADMIN_LIST = 'config/admins.json'
 
 # Print texts to console instead of sending SMS
-DEBUG_SMS = True
+DEBUG_SMS = ENV is "DEV"
 
 # 10 texts an hour
 SMS_PER_PERIOD = 10
