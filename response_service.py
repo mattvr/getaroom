@@ -6,8 +6,8 @@ import json
 import math
 import time
 
-from config import DEBUG_SMS, SMS_LARGE_PENALTY, RATE_LIMIT_WARNING_MESSAGE
-from config import WIT_ACCESS_TOKEN, NEXMO_API_KEY, NEXMO_API_SECRET, NEXMO_PHONE_NO, LOG_MESSAGES
+import config
+
 from getaroom import get_available_rooms
 from dictionary import get_phrase
 from message_logger import log_message, MessageDirection
@@ -15,13 +15,13 @@ from rate_limit_service import is_rate_limited, rate_warned, get_rate_limit_endi
 from utils import bcolors, get_terminal_size
 
 # External dependencies
-import dateutil.parser  # pip install python-dateutil
-from nexmomessage import NexmoMessage  # pip install -e git+https://github.com/marcuz/libpynexmo.git#egg=nexmomessage
-import emoji # pip install emoji --upgrade
+import dateutil.parser
+from nexmomessage import NexmoMessage
+import emoji
 
 allowed_types = ['text']
 
-def print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_response, success):
+def print_task_info(body, num_texts, rate_limit_end, rate_limited, sender_no, sms_response, success):
     t = time.strftime('%I:%m:%S %p %d/%m/%y')
     (w, h) = get_terminal_size()
     num = math.floor(w / 2)
@@ -36,7 +36,7 @@ def print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_r
     print(
         "[%s] SMS Response :: " % (t, ) + bcolors.OKBLUE + " %s " % (sender_no, ) + bcolors.ENDC + " :: consumes %d" % (
             num_texts, ))
-    if rateLimited: print("Phone number is rate limited (%s) until %s" % (sender_no, rateLimitEnd))
+    if rate_limited: print("Phone number is rate limited (%s) until %s" % (sender_no, rate_limit_end))
     print("IN : %s" % body)
     print("OUT: %s" % sms_response)
     print "=" * w
@@ -63,31 +63,31 @@ def parse_sms_main(body, sender_no, encoding = u'text'):
 
     # If SMS_LARGE_PENALTY, an sms response overflows 160 characters and becomes 2 messages, user is still charged
 
-    rateLimited = False
-    rateLimitEnd = None
+    rate_limited = False
+    rate_limit_end = None
     if not is_admin(sender_no):
         sms_penalty = 1.0
-        if SMS_LARGE_PENALTY:
+        if config.SMS_LARGE_PENALTY:
             sms_penalty = float(num_texts)
 
         if is_rate_limited(sender_no, num_texts=sms_penalty):
             end_time = get_rate_limit_ending(sender_no, 1)
             str_end = end_time.strftime("%I:%M %p").lstrip('0')
 
-            if RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
+            if config.RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
                 rate_warned[sender_no] = True
                 send_sms(sender_no, (get_phrase("RATE_LIMITED") % str_end))
 
-            rateLimited = True
-            rateLimitEnd = str_end
+            rate_limited = True
+            rate_limit_end = str_end
             return "Phone number is rate limited. Try again later."
 
-        if RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
+        if config.RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
             del rate_warned[sender_no]
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
 
-    print_task_info(body, num_texts, rateLimitEnd, rateLimited, sender_no, sms_response, success)
+    print_task_info(body, num_texts, rate_limit_end, rate_limited, sender_no, sms_response, success)
 
     if wit_response is not None:
         logger.info(wit_response)
@@ -159,15 +159,15 @@ def parse_joke():
 
 
 def send_sms(number, message, msgType = "text"):
-    if DEBUG_SMS:
+    if config.DEBUG_SMS:
         print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (message, number))
         return
 
     msg = {
         'reqtype': 'json',
-        'api_key': NEXMO_API_KEY,
-        'api_secret': NEXMO_API_SECRET,
-        'from': NEXMO_PHONE_NO,
+        'api_key': config.NEXMO_API_KEY,
+        'api_secret': config.NEXMO_API_SECRET,
+        'from': config.NEXMO_PHONE_NO,
         'to': number,
         'text': message,
         'type': msgType
@@ -179,13 +179,13 @@ def send_sms(number, message, msgType = "text"):
         logger.error("[NEXMO] Failed to send response: %s [to] %s" % (message, number))
         print "Failed to send response"
 
-    if LOG_MESSAGES:
+    if config.LOG_MESSAGES:
         log_message(number, message, MessageDirection.OUTBOUND)
 
 
 def send_to_wit(message):
     conn = httplib.HTTPSConnection('api.wit.ai')
-    headers = {'Authorization': 'Bearer %s' % (WIT_ACCESS_TOKEN,)}
+    headers = {'Authorization': 'Bearer %s' % (config.WIT_ACCESS_TOKEN,)}
     params = urllib.urlencode({'v': '20141022', 'q': message})
     url = '/message?%s' % (params,)
     conn.request('GET', url, '', headers)

@@ -7,7 +7,7 @@ import sqlite3
 import json
 import logging as logger
 
-from config import SQLITE_DATABASE, BUIlDING_NAME_LOOKUP, LOGGER_SERVICE
+import config
 
 # logger.basicConfig(filename=LOGGER_SERVICE,level=logger.DEBUG)
 
@@ -124,7 +124,7 @@ def pub_populate(args):
 
 
 def get_available_rooms(building_str, in_class_time):
-    con = sqlite3.connect(SQLITE_DATABASE)
+    con = sqlite3.connect(config.SQLITE_DATABASE)
     cur = con.cursor()
 
     cmd = "SELECT * FROM buildings WHERE code = ?"
@@ -211,12 +211,12 @@ def get_available_rooms(building_str, in_class_time):
 
 # Writes a SQLite database from source_file html table
 def populate(source_file):
-    con = sqlite3.connect(SQLITE_DATABASE)
-    building_lookup = json.loads(open(BUIlDING_NAME_LOOKUP).read())
+    con = sqlite3.connect(config.SQLITE_DATABASE)
+    building_lookup = json.loads(open(config.BUIlDING_NAME_LOOKUP).read())
 
     logger.info("[POP] Loading beautifulsoup file")
     print "Loading %s..." % source_file,
-    soup = BeautifulSoup(open(source_file, 'r'))
+    soup = BeautifulSoup(open(source_file, 'r'), "html.parser")
     print '\033[92m' + "done" + '\033[0m'
 
     rows = soup.table.tbody.find_all('tr')
@@ -225,17 +225,16 @@ def populate(source_file):
     # Emptying db
     with con:
         cur = con.cursor()
-        sql1 = "DELETE FROM buildings;"
-        sql2 = "DELETE FROM times;"
-        sql3 = "DELETE FROM rooms;"
-        sql4 = "DELETE FROM sqlite_sequence WHERE name = ?;"
+        sql1 = "DELETE FROM ?;"
+        sql2 = "DELETE FROM sqlite_sequence WHERE name = ?;"
         try:
-            cur.execute(sql1)
-            cur.execute(sql2)
-            cur.execute(sql3)
-            cur.execute(sql4, 'buildings')
-            cur.execute(sql4, 'rooms')
-            cur.execute(sql4, 'times')
+            cur.execute(sql1, 'buildings')
+            cur.execute(sql1, 'times')
+            cur.execute(sql1, 'rooms')
+
+            cur.execute(sql2, 'buildings')
+            cur.execute(sql2, 'rooms')
+            cur.execute(sql2, 'times')
         except:
             pass
         con.commit()
