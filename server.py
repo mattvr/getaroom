@@ -24,19 +24,20 @@ def getaroom():
     if sender_no is None or body is None:
         logger.error("RECEIVED INVALID MESSAGE.")
         valid = False
+    else:
+        if LOG_MESSAGES:
+            log_message(sender_no, body, MessageDirection.INBOUND)
 
-    if LOG_MESSAGES:
-        log_message(sender_no, body, MessageDirection.INBOUND)
+        if is_banned(sender_no):
+            logger.warn("Number banned! - %s - %s", (body, sender_no))
+            return "Number banned"
 
-    if is_banned(sender_no):
-        logger.warn("Number banned! - %s - %s", (body, sender_no))
-        return "Number banned"
 
-    logger.info("Received request - %s - %s" % (body, sender_no))
+        logger.info("Received request - %s - %s" % (body, sender_no))
 
     if not valid:
-
         return "Invalid message"
+
     return parse_sms_main(body, sender_no, encoding)
 
 
