@@ -223,14 +223,14 @@ def populate(source_file):
     rows = rows[1:]  # ignore title row
 
     # Emptying db
+    print "Purging Database"
     with con:
         cur = con.cursor()
-        sql1 = "DELETE FROM ?;"
         sql2 = "DELETE FROM sqlite_sequence WHERE name = ?;"
         try:
-            cur.execute(sql1, 'buildings')
-            cur.execute(sql1, 'times')
-            cur.execute(sql1, 'rooms')
+            cur.execute('DELETE FROM buildings')
+            cur.execute('DELETE FROM times')
+            cur.execute('DELETE FROM rooms')
 
             cur.execute(sql2, 'buildings')
             cur.execute(sql2, 'rooms')
