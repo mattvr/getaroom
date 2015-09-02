@@ -3,13 +3,14 @@ import httplib
 import urllib
 import logging as logger
 import json
+import operator
 import math
 import time
 
 import config
 
 from getaroom import get_available_rooms
-from dictionary import get_phrase
+import dictionary
 from message_logger import log_message, MessageDirection
 from rate_limit_service import is_rate_limited, rate_warned, get_rate_limit_ending, is_admin
 from utils import bcolors, get_terminal_size
@@ -76,7 +77,7 @@ def parse_sms_main(body, sender_no, encoding = u'text'):
 
             if config.RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
                 rate_warned[sender_no] = True
-                send_sms(sender_no, (get_phrase("RATE_LIMITED") % str_end))
+                send_sms(sender_no, (dictionary.get_phrase("RATE_LIMITED") % str_end))
 
             rate_limited = True
             rate_limit_end = str_end
@@ -101,7 +102,7 @@ def parse_response(response):
     if intent == 'getaroom':
         return parse_getaroom(response)
     elif intent == 'help':
-        return True, get_phrase("HELP")
+        return True, dictionary.get_phrase("HELP")
     elif intent == 'stop':
         return parse_joke()
     else:
@@ -114,31 +115,46 @@ def parse_getaroom(response):
         if 'entities' in outcome and len(outcome['entities']) > 0:
             entities = outcome['entities']
             if 'building' in entities and len(entities['building']) > 0:
-                building = entities['building'][0]['value']
-                time = datetime.now()
+
+                # We'll parse out the building entities and select as many as possible with respect to the config
+                buildings_to_parse = map(lambda x: x['value'], entities['building'])
+                if len(buildings_to_parse) > config.MAX_BUILDINGS_IN_REQUEST:
+                    buildings_to_parse = buildings_to_parse[:config.MAX_BUILDINGS_IN_REQUEST]
+
+                current_time = datetime.now()
 
                 if 'datetime' in entities and len(entities['datetime']) > 0:
                     time_str = entities['datetime'][0]['value']
-                    time = dateutil.parser.parse(time_str)
+                    current_time = dateutil.parser.parse(time_str)
 
-                rooms = get_available_rooms(building, time)
+                rooms = []
+                for building_name in buildings_to_parse:
+                    rooms += get_available_rooms(building_name, current_time, False)
                 if len(rooms) == 0:
-                    return False, get_phrase("NO_ROOMS")
+                    return False, dictionary.get_phrase("NO_ROOMS")
+
                 else:
+                    # Sort our collection of rooms
+                    rooms.sort(key=operator.attrgetter('weight'), reverse=True)
+
+                    # TODO: Add logic to determine room name here when multiple buildings are in solution set
                     building_name = rooms[0].building_name
+
                     string = ''
-                    salutation = get_phrase("INTRO")
+                    salutation = dictionary.get_phrase("INTRO")
+
+                    # We'll say "hi" and that we found some rooms
                     if len(rooms) == 1:
-                        phrase = "%s %s" % (salutation, get_phrase("ONE_ROOM"))
+                        phrase = "%s %s" % (salutation, dictionary.get_phrase("ONE_ROOM"))
                         string += phrase % (building_name,)
                     elif len(rooms) <= 3:
-                        phrase = "%s %s" % (salutation, get_phrase("SEVERAL_ROOMS"))
+                        phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_ROOMS"))
                         string += phrase % (len(rooms), building_name)
                     else:
-                        phrase = "%s %s" % (salutation, get_phrase("SEVERAL_MORE_ROOMS"))
+                        phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_MORE_ROOMS"))
                         string += phrase % (building_name,)
 
-                iterations = min((3, len(rooms)))
+                iterations = min((config.NUM_ROOMS_TO_SHOW, len(rooms)))
                 for i, room in enumerate(rooms[:iterations]):
                     if not room.end_availability:
                         string += '- %s %s (rest of day)' % (room.building_code, room.number)
@@ -148,17 +164,17 @@ def parse_getaroom(response):
                         string += '\n'
 
                 return True, string
-    return False, get_phrase("INVALID_MESSAGE")
+    return False, dictionary.get_phrase("INVALID_MESSAGE")
 
 
 def parse_joke():
-    string = get_phrase("PENGUIN_FACTS_WELCOME")
-    fact = get_phrase("PENGUIN_FACTS")
+    string = dictionary.get_phrase("PENGUIN_FACTS_WELCOME")
+    fact = dictionary.get_phrase("PENGUIN_FACTS")
     string += fact
     return True, string
 
 
-def send_sms(number, message, msgType = "text"):
+def send_sms(number, message, msg_type = "text"):
     if config.DEBUG_SMS:
         print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (message, number))
         return
@@ -170,7 +186,7 @@ def send_sms(number, message, msgType = "text"):
         'from': config.NEXMO_PHONE_NO,
         'to': number,
         'text': message,
-        'type': msgType
+        'type': msg_type
     }
     sms = NexmoMessage(msg)
     sms.set_text_info(msg['text'])

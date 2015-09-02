@@ -123,7 +123,7 @@ def pub_populate(args):
     return
 
 
-def get_available_rooms(building_str, in_class_time):
+def get_available_rooms(building_str, in_class_time, sort_weight=True):
     con = sqlite3.connect(config.SQLITE_DATABASE)
     cur = con.cursor()
 
@@ -205,7 +205,8 @@ def get_available_rooms(building_str, in_class_time):
             return_rooms.append(result_class_room)
     cur.close()
 
-    return_rooms.sort(key=operator.attrgetter('weight'), reverse=True)
+    if sort_weight:
+        return_rooms.sort(key=operator.attrgetter('weight'), reverse=True)
     return return_rooms
 
 
