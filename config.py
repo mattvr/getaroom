@@ -24,7 +24,7 @@ BLACKLIST = 'config/blacklist.json'
 ADMIN_LIST = 'config/admins.json'
 
 # Print texts to console instead of sending SMS
-DEBUG_SMS = ENV is "DEV"
+DEBUG_SMS = ENV == "DEV"
 
 # 10 texts an hour
 SMS_PER_PERIOD = 10
