@@ -12,7 +12,7 @@ import config
 from getaroom import get_available_rooms
 import dictionary
 from message_logger import log_message, MessageDirection
-from rate_limit_service import is_rate_limited, rate_warned, get_rate_limit_ending, is_admin
+import rate_limit_service
 from utils import bcolors, get_terminal_size
 
 # External dependencies
@@ -66,25 +66,25 @@ def parse_sms_main(body, sender_no, encoding = u'text'):
 
     rate_limited = False
     rate_limit_end = None
-    if not is_admin(sender_no):
+    if not rate_limit_service.is_admin(sender_no):
         sms_penalty = 1.0
         if config.SMS_LARGE_PENALTY:
             sms_penalty = float(num_texts)
 
-        if is_rate_limited(sender_no, num_texts=sms_penalty):
-            end_time = get_rate_limit_ending(sender_no, 1)
+        if rate_limit_service.is_rate_limited(sender_no, num_texts=sms_penalty):
+            end_time = rate_limit_service.get_rate_limit_ending(sender_no, 1)
             str_end = end_time.strftime("%I:%M %p").lstrip('0')
 
-            if config.RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
-                rate_warned[sender_no] = True
+            if config.RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_limit_service.rate_warned:
+                rate_limit_service.rate_warned[sender_no] = True
                 send_sms(sender_no, (dictionary.get_phrase("RATE_LIMITED") % str_end))
 
             rate_limited = True
             rate_limit_end = str_end
             return "Phone number is rate limited. Try again later."
 
-        if config.RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
-            del rate_warned[sender_no]
+        if config.RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_limit_service.rate_warned:
+            del rate_limit_service.rate_warned[sender_no]
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
 
