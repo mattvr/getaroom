@@ -1,16 +1,16 @@
 import logging as logger
 
-from rate_limit_service import is_banned
-from config import LOGGER_SERVER, LOG_MESSAGES
-from message_logger import log_message, MessageDirection
-from response_service import parse_sms_main
+import rate_limit_service
+import config
+import message_logger as mlogger
+import response_service
 
 # External dependencies
 from flask import Flask, request
 
 app = Flask(__name__)
 
-logger.basicConfig(filename=LOGGER_SERVER, level=logger.DEBUG)
+logger.basicConfig(filename=config.LOGGER_SERVER, level=logger.DEBUG)
 
 
 @app.route('/getaroom', methods=['GET', 'POST'])
@@ -25,10 +25,10 @@ def getaroom():
         logger.error("RECEIVED INVALID MESSAGE.")
         valid = False
     else:
-        if LOG_MESSAGES:
-            log_message(sender_no, body, MessageDirection.INBOUND)
+        if config.LOG_MESSAGES:
+            mlogger.log_message(sender_no, body, mlogger.MessageDirection.INBOUND)
 
-        if is_banned(sender_no):
+        if rate_limit_service.is_banned(sender_no):
             logger.warn("Number banned! - %s - %s", (body, sender_no))
             return "Number banned"
 
@@ -38,7 +38,7 @@ def getaroom():
     if not valid:
         return "Invalid message"
 
-    return parse_sms_main(body, sender_no, encoding)
+    return response_service.parse_sms_main(body, sender_no, encoding)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ import logging as logger
 import sqlite3
 import json
 
-from config import SMS_PER_PERIOD, SMS_PERIOD, SQLITE_DATABASE, BLACKLIST, ADMIN_LIST
+import config
 
 
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -12,10 +12,10 @@ DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 rate_warned = {}
 
 def is_rate_limited(phone_number, num_texts=1.0):
-    con = sqlite3.connect(SQLITE_DATABASE)
+    con = sqlite3.connect(config.SQLITE_DATABASE)
     cur = con.cursor()
 
-    rate = SMS_PER_PERIOD
+    rate = config.SMS_PER_PERIOD
     allowance = rate
 
     current_time = time.strftime(DATETIME_FORMAT)
@@ -37,7 +37,7 @@ def is_rate_limited(phone_number, num_texts=1.0):
     last_check = datetime.strptime(rate_log[2], DATETIME_FORMAT)
     time_passed = datetime.strptime(current_time, DATETIME_FORMAT) - last_check
 
-    ratio = float(SMS_PER_PERIOD) / float(SMS_PERIOD)
+    ratio = float(config.SMS_PER_PERIOD) / float(config.SMS_PERIOD)
     allowance = rate_log[3] + time_passed.seconds * ratio
 
     q = "UPDATE rate_limit_logs SET last_time = ?, allowance = ? WHERE id = ?"
@@ -60,7 +60,7 @@ def is_rate_limited(phone_number, num_texts=1.0):
     return ret_val
 
 def get_rate_limit_ending(phone_num, allowance = 1):
-    con = sqlite3.connect(SQLITE_DATABASE)
+    con = sqlite3.connect(config.SQLITE_DATABASE)
     cur = con.cursor()
     q = "SELECT * FROM rate_limit_logs WHERE phone_number = ?"
     cur.execute(q, (phone_num, ))
@@ -72,7 +72,7 @@ def get_rate_limit_ending(phone_num, allowance = 1):
     if time_left > allowance:
         return 0
 
-    time_left *= (SMS_PERIOD / SMS_PER_PERIOD)
+    time_left *= (config.SMS_PERIOD / config.SMS_PER_PERIOD)
     m, s = divmod(time_left, 60)
     h, m = divmod(m, 60)
 
@@ -81,7 +81,7 @@ def get_rate_limit_ending(phone_num, allowance = 1):
     return dt_end_limit
 
 def is_admin(number):
-    admin_lookup = json.loads(open(ADMIN_LIST).read())
+    admin_lookup = json.loads(open(config.ADMIN_LIST).read())
     admins = admin_lookup['admins']
     if number in admins:
         return True
@@ -99,7 +99,7 @@ def get_time_remaining(phone_num, allowance = 1):
     print '%s:%s:%s' % (hours, minutes, seconds)
 
 def is_banned(number):
-    ban_lookup = json.loads(open(BLACKLIST).read())
+    ban_lookup = json.loads(open(config.BLACKLIST).read())
     bans = ban_lookup['bans']
     if number in bans:
         return True

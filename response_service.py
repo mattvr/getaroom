@@ -9,11 +9,11 @@ import time
 
 import config
 
-from getaroom import get_available_rooms
+import getaroom
 import dictionary
-from message_logger import log_message, MessageDirection
+import message_logger as mlogger
 import rate_limit_service
-from utils import bcolors, get_terminal_size
+import utils
 
 # External dependencies
 import dateutil.parser
@@ -24,18 +24,18 @@ allowed_types = ['text']
 
 def print_task_info(body, num_texts, rate_limit_end, rate_limited, sender_no, sms_response, success):
     t = time.strftime('%I:%m:%S %p %d/%m/%y')
-    (w, h) = get_terminal_size()
+    (w, h) = utils.get_terminal_size()
     num = math.floor(w / 2)
     if success:
         print "=" * (int(num - 3)),
-        print(bcolors.OKGREEN + " OK " + bcolors.ENDC),
+        print(utils.bcolors.OKGREEN + " OK " + utils.bcolors.ENDC),
         print "=" * (int(num - 3))
     else:
         print "=" * (int(num - 3)),
-        print(bcolors.FAIL + "FAIL" + bcolors.ENDC),
+        print(utils.bcolors.FAIL + "FAIL" + utils.bcolors.ENDC),
         print "=" * (int(num - 3))
     print(
-        "[%s] SMS Response :: " % (t, ) + bcolors.OKBLUE + " %s " % (sender_no, ) + bcolors.ENDC + " :: consumes %d" % (
+        "[%s] SMS Response :: " % (t, ) + utils.bcolors.OKBLUE + " %s " % (sender_no, ) + utils.bcolors.ENDC + " :: consumes %d" % (
             num_texts, ))
     if rate_limited: print("Phone number is rate limited (%s) until %s" % (sender_no, rate_limit_end))
     print("IN : %s" % body)
@@ -129,7 +129,7 @@ def parse_getaroom(response):
 
                 rooms = []
                 for building_name in buildings_to_parse:
-                    rooms += get_available_rooms(building_name, current_time, False)
+                    rooms += getaroom.get_available_rooms(building_name, current_time, False)
                 if len(rooms) == 0:
                     return False, dictionary.get_phrase("NO_ROOMS")
 
@@ -196,7 +196,7 @@ def send_sms(number, message, msg_type = "text"):
         print "Failed to send response"
 
     if config.LOG_MESSAGES:
-        log_message(number, message, MessageDirection.OUTBOUND)
+        mlogger.log_message(number, message, mlogger.MessageDirection.OUTBOUND)
 
 
 def send_to_wit(message):
