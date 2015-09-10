@@ -136,25 +136,27 @@ def parse_getaroom(response):
                 else:
                     # Sort our collection of rooms
                     rooms.sort(key=operator.attrgetter('weight'), reverse=True)
-
-                    # TODO: Add logic to determine room name here when multiple buildings are in solution set
                     building_name = rooms[0].building_name
 
                     string = ''
                     salutation = dictionary.get_phrase("INTRO")
 
-                    # We'll say "hi" and that we found some rooms
-                    if len(rooms) == 1:
-                        phrase = "%s %s" % (salutation, dictionary.get_phrase("ONE_ROOM"))
-                        string += phrase % (building_name,)
-                    elif len(rooms) <= 3:
-                        phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_ROOMS"))
-                        string += phrase % (len(rooms), building_name)
+                    # If multiple buildings were requested, don't list them in the salutation
+                    if len(buildings_to_parse) > 1:
+                        phrase = "%s %s" % (salutation, dictionary.get_phrase("MULTIPLE_BUILDINGS"))
+                        string += phrase
                     else:
-                        phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_MORE_ROOMS"))
-                        string += phrase % (building_name,)
-
+                        if len(rooms) == 1:
+                            phrase = "%s %s" % (salutation, dictionary.get_phrase("ONE_ROOM"))
+                            string += phrase % (building_name,)
+                        elif len(rooms) <= 3:
+                            phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_ROOMS"))
+                            string += phrase % (len(rooms), building_name)
+                        else:
+                            phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_MORE_ROOMS"))
+                            string += phrase % (building_name,)
                 iterations = min((config.NUM_ROOMS_TO_SHOW, len(rooms)))
+
                 for i, room in enumerate(rooms[:iterations]):
                     if not room.end_availability:
                         string += '- %s %s (rest of day)' % (room.building_code, room.number)
