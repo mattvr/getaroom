@@ -36,6 +36,12 @@ RATE_LIMIT_WARNING_MESSAGE = True
 # Count if a generic text consumes more than one message (long building name)
 SMS_LARGE_PENALTY = False
 
+# How many buildings are allowed in one semantic request
+MAX_BUILDINGS_IN_REQUEST = 3
+
+# How many rooms should we respond with (as is possible)
+NUM_ROOMS_TO_SHOW = 3
+
 DICTIONARY_FILE = "config/dictionary.json"
 DEFAULT_LANGUAGE = "en"
 

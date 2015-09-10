@@ -3,16 +3,17 @@ import httplib
 import urllib
 import logging as logger
 import json
+import operator
 import math
 import time
 
 import config
 
-from getaroom import get_available_rooms
-from dictionary import get_phrase
-from message_logger import log_message, MessageDirection
-from rate_limit_service import is_rate_limited, rate_warned, get_rate_limit_ending, is_admin
-from utils import bcolors, get_terminal_size
+import getaroom
+import dictionary
+import message_logger as mlogger
+import rate_limit_service
+import utils
 
 # External dependencies
 import dateutil.parser
@@ -23,18 +24,18 @@ allowed_types = ['text']
 
 def print_task_info(body, num_texts, rate_limit_end, rate_limited, sender_no, sms_response, success):
     t = time.strftime('%I:%m:%S %p %d/%m/%y')
-    (w, h) = get_terminal_size()
+    (w, h) = utils.get_terminal_size()
     num = math.floor(w / 2)
     if success:
         print "=" * (int(num - 3)),
-        print(bcolors.OKGREEN + " OK " + bcolors.ENDC),
+        print(utils.bcolors.OKGREEN + " OK " + utils.bcolors.ENDC),
         print "=" * (int(num - 3))
     else:
         print "=" * (int(num - 3)),
-        print(bcolors.FAIL + "FAIL" + bcolors.ENDC),
+        print(utils.bcolors.FAIL + "FAIL" + utils.bcolors.ENDC),
         print "=" * (int(num - 3))
     print(
-        "[%s] SMS Response :: " % (t, ) + bcolors.OKBLUE + " %s " % (sender_no, ) + bcolors.ENDC + " :: consumes %d" % (
+        "[%s] SMS Response :: " % (t, ) + utils.bcolors.OKBLUE + " %s " % (sender_no, ) + utils.bcolors.ENDC + " :: consumes %d" % (
             num_texts, ))
     if rate_limited: print("Phone number is rate limited (%s) until %s" % (sender_no, rate_limit_end))
     print("IN : %s" % body)
@@ -65,25 +66,25 @@ def parse_sms_main(body, sender_no, encoding = u'text'):
 
     rate_limited = False
     rate_limit_end = None
-    if not is_admin(sender_no):
+    if not rate_limit_service.is_admin(sender_no):
         sms_penalty = 1.0
         if config.SMS_LARGE_PENALTY:
             sms_penalty = float(num_texts)
 
-        if is_rate_limited(sender_no, num_texts=sms_penalty):
-            end_time = get_rate_limit_ending(sender_no, 1)
+        if rate_limit_service.is_rate_limited(sender_no, num_texts=sms_penalty):
+            end_time = rate_limit_service.get_rate_limit_ending(sender_no, 1)
             str_end = end_time.strftime("%I:%M %p").lstrip('0')
 
-            if config.RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_warned:
-                rate_warned[sender_no] = True
-                send_sms(sender_no, (get_phrase("RATE_LIMITED") % str_end))
+            if config.RATE_LIMIT_WARNING_MESSAGE and not sender_no in rate_limit_service.rate_warned:
+                rate_limit_service.rate_warned[sender_no] = True
+                send_sms(sender_no, (dictionary.get_phrase("RATE_LIMITED") % str_end))
 
             rate_limited = True
             rate_limit_end = str_end
             return "Phone number is rate limited. Try again later."
 
-        if config.RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_warned:
-            del rate_warned[sender_no]
+        if config.RATE_LIMIT_WARNING_MESSAGE and sender_no in rate_limit_service.rate_warned:
+            del rate_limit_service.rate_warned[sender_no]
 
     logger.info("SMS Response Generated - consumes %d SMS" % num_texts)
 
@@ -101,7 +102,7 @@ def parse_response(response):
     if intent == 'getaroom':
         return parse_getaroom(response)
     elif intent == 'help':
-        return True, get_phrase("HELP")
+        return True, dictionary.get_phrase("HELP")
     elif intent == 'stop':
         return parse_joke()
     else:
@@ -114,31 +115,48 @@ def parse_getaroom(response):
         if 'entities' in outcome and len(outcome['entities']) > 0:
             entities = outcome['entities']
             if 'building' in entities and len(entities['building']) > 0:
-                building = entities['building'][0]['value']
-                time = datetime.now()
+
+                # We'll parse out the building entities and select as many as possible with respect to the config
+                buildings_to_parse = map(lambda x: x['value'], entities['building'])
+                if len(buildings_to_parse) > config.MAX_BUILDINGS_IN_REQUEST:
+                    buildings_to_parse = buildings_to_parse[:config.MAX_BUILDINGS_IN_REQUEST]
+
+                current_time = datetime.now()
 
                 if 'datetime' in entities and len(entities['datetime']) > 0:
                     time_str = entities['datetime'][0]['value']
-                    time = dateutil.parser.parse(time_str)
+                    current_time = dateutil.parser.parse(time_str)
 
-                rooms = get_available_rooms(building, time)
+                rooms = []
+                for building_name in buildings_to_parse:
+                    rooms += getaroom.get_available_rooms(building_name, current_time, False)
                 if len(rooms) == 0:
-                    return False, get_phrase("NO_ROOMS")
-                else:
-                    building_name = rooms[0].building_name
-                    string = ''
-                    salutation = get_phrase("INTRO")
-                    if len(rooms) == 1:
-                        phrase = "%s %s" % (salutation, get_phrase("ONE_ROOM"))
-                        string += phrase % (building_name,)
-                    elif len(rooms) <= 3:
-                        phrase = "%s %s" % (salutation, get_phrase("SEVERAL_ROOMS"))
-                        string += phrase % (len(rooms), building_name)
-                    else:
-                        phrase = "%s %s" % (salutation, get_phrase("SEVERAL_MORE_ROOMS"))
-                        string += phrase % (building_name,)
+                    return False, dictionary.get_phrase("NO_ROOMS")
 
-                iterations = min((3, len(rooms)))
+                else:
+                    # Sort our collection of rooms
+                    rooms.sort(key=operator.attrgetter('weight'), reverse=True)
+                    building_name = rooms[0].building_name
+
+                    string = ''
+                    salutation = dictionary.get_phrase("INTRO")
+
+                    # If multiple buildings were requested, don't list them in the salutation
+                    if len(buildings_to_parse) > 1:
+                        phrase = "%s %s" % (salutation, dictionary.get_phrase("MULTIPLE_BUILDINGS"))
+                        string += phrase
+                    else:
+                        if len(rooms) == 1:
+                            phrase = "%s %s" % (salutation, dictionary.get_phrase("ONE_ROOM"))
+                            string += phrase % (building_name,)
+                        elif len(rooms) <= 3:
+                            phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_ROOMS"))
+                            string += phrase % (len(rooms), building_name)
+                        else:
+                            phrase = "%s %s" % (salutation, dictionary.get_phrase("SEVERAL_MORE_ROOMS"))
+                            string += phrase % (building_name,)
+                iterations = min((config.NUM_ROOMS_TO_SHOW, len(rooms)))
+
                 for i, room in enumerate(rooms[:iterations]):
                     if not room.end_availability:
                         string += '- %s %s (rest of day)' % (room.building_code, room.number)
@@ -148,17 +166,17 @@ def parse_getaroom(response):
                         string += '\n'
 
                 return True, string
-    return False, get_phrase("INVALID_MESSAGE")
+    return False, dictionary.get_phrase("INVALID_MESSAGE")
 
 
 def parse_joke():
-    string = get_phrase("PENGUIN_FACTS_WELCOME")
-    fact = get_phrase("PENGUIN_FACTS")
+    string = dictionary.get_phrase("PENGUIN_FACTS_WELCOME")
+    fact = dictionary.get_phrase("PENGUIN_FACTS")
     string += fact
     return True, string
 
 
-def send_sms(number, message, msgType = "text"):
+def send_sms(number, message, msg_type = "text"):
     if config.DEBUG_SMS:
         print("SMS DEBUG:\n%s\nfrom: %s\n===========" % (message, number))
         return
@@ -170,7 +188,7 @@ def send_sms(number, message, msgType = "text"):
         'from': config.NEXMO_PHONE_NO,
         'to': number,
         'text': message,
-        'type': msgType
+        'type': msg_type
     }
     sms = NexmoMessage(msg)
     sms.set_text_info(msg['text'])
@@ -180,7 +198,7 @@ def send_sms(number, message, msgType = "text"):
         print "Failed to send response"
 
     if config.LOG_MESSAGES:
-        log_message(number, message, MessageDirection.OUTBOUND)
+        mlogger.log_message(number, message, mlogger.MessageDirection.OUTBOUND)
 
 
 def send_to_wit(message):
