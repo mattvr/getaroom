@@ -5,7 +5,7 @@
       "HELP": "This service finds you a vacant room on Virginia Tech's campus.\n\nTry: \"get a room in TORG\"",
       "INTRO": ["Hey!", "Yo!", "Good news!", "Howdy!", "Hi!", "Success!"],
       "RATE_LIMITED": "Sorry, your phone number has been rate limited. Please try again at %s",
-      "MULTIPLE_BUILDINGS": "Here are the best rooms of those buildings:\n\n",
+      "MULTIPLE_BUILDINGS": "Here are the best rooms in those buildings:\n\n",
       "ONE_ROOM": "I found one room in %s:\n\n",
       "SEVERAL_ROOMS": "I found %d rooms in %s:\n\n",
       "SEVERAL_MORE_ROOMS": "Here are a few rooms in %s:\n\n",

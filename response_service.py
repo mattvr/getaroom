@@ -123,8 +123,12 @@ def parse_getaroom(response):
 
                 current_time = datetime.now()
 
-                if 'datetime' in entities and len(entities['datetime']) > 0:
+                if 'datetime' in entities and len(entities['datetime']) > 0 and 'value' in entities['datetime'][0]:
                     time_str = entities['datetime'][0]['value']
+                    current_time = dateutil.parser.parse(time_str)
+
+                elif 'datetime' in entities and len(entities['datetime']) > 0 and 'to' in entities['datetime'][0]:
+                    time_str = entities['datetime'][0]['to']
                     current_time = dateutil.parser.parse(time_str)
 
                 rooms = []
